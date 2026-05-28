@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 
+// 상태 이상 및 쿨타임 타이밍 관리자
 public class StatusEffectManager
 {
     public void OnRoundStart(List<UnitControl> allUnits)

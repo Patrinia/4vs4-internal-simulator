@@ -7,22 +7,22 @@ public class RoundManager : MonoBehaviour
 {
     public static RoundManager Instance { get; private set; }
 
-    [Header("System Dependencies")]
+    [Header("시스템 의존성 모음")]
     private ITurnSorter turnSorter;
     private CombatResolver combatResolver;
     private StatusEffectManager statusManager;
 
-    [Header("Battle Data")]
-    public List<UnitControl> allUnits = new List<UnitControl>();
-    private Queue<UnitControl> turnQueue = new Queue<UnitControl>();
-    private int currentRound = 0;
+    [Header("전투 데이터")]
+    public List<UnitControl> allUnits = new List<UnitControl>(); // 전투에 참여하는 모든 유닛 리스트
+    private Queue<UnitControl> turnQueue = new Queue<UnitControl>(); // 이번 라운드의 턴 대기열
+    private int currentRound = 0; // 현재 라운드 수
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
-        // 필요한 매니저들 인스턴스(객체) 생성
+        // 순수 C# 전문가 클래스들 초기화
         turnSorter = new SpeedTurnSorter();
         combatResolver = new CombatResolver();
         statusManager = new StatusEffectManager();
@@ -34,59 +34,59 @@ public class RoundManager : MonoBehaviour
     }
 
     // ========================================================================
-    // [Battle Core Loop]
+    // [전투 핵심 루프]
     // ========================================================================
     private IEnumerator BattleLoop()
     {
         yield return new WaitForSeconds(0.5f);
 
-        // Phase 3-2: Loop until battle ends
+        // 전투가 계속 진행 가능한지 확인 (전멸 확인)
         while (CheckBattleContinue())
         {
             currentRound++;
-            Debug.Log($"<color=cyan>=== Round {currentRound} Start ===</color>");
+            Debug.Log($"<color=cyan>=== 라운드 {currentRound} 시작 ===</color>");
 
-            // [Phase 1: Round Start]
-            statusManager.OnRoundStart(allUnits);                     // 1-1
-            turnQueue = turnSorter.BuildTurnQueue(GetAliveUnits());   // 1-2 & 1-3
+            // [Phase 1: 라운드 시작]
+            statusManager.OnRoundStart(allUnits);
+            turnQueue = turnSorter.BuildTurnQueue(GetAliveUnits());
 
-            // [Phase 2: Turn Loop]
+            // [Phase 2: 턴 반복 루프]
             while (turnQueue.Count > 0)
             {
-                UnitControl currentUnit = turnQueue.Dequeue(); // 2-1
+                UnitControl currentUnit = turnQueue.Dequeue();
 
-                // Safety check: Skip if unit died from dot damage or reflect before their turn
+                // 안전장치: 자신의 턴이 오기 전에 도트 데미지나 반사 데미지로 사망한 경우 스킵
                 if (currentUnit == null || currentUnit.isDead) continue;
 
                 yield return StartCoroutine(ProcessTurn(currentUnit));
             }
 
-            // [Phase 3: Round End]
-            statusManager.OnRoundEnd(allUnits); // 3-1
-            Debug.Log($"<color=orange>=== Round {currentRound} End ===</color>");
+            // [Phase 3: 라운드 종료]
+            statusManager.OnRoundEnd(allUnits);
+            Debug.Log($"<color=orange>=== 라운드 {currentRound} 종료 ===</color>");
             yield return new WaitForSeconds(1.0f);
         }
 
-        Debug.Log("Battle Finished.");
+        Debug.Log("전투가 완전히 종료되었습니다.");
     }
 
     private IEnumerator ProcessTurn(UnitControl unit)
     {
-        Debug.Log($"[{unit.unitName}] Turn Start.");
+        Debug.Log($"[{unit.unitName}] 턴 시작.");
 
-        // 2-2. Turn Start Event
+        // 2-2. 턴 시작 시점 이벤트 발동
         statusManager.OnTurnStart(unit);
 
-        // 2-3. Status Check
-        if (unit.IsUnableToAct()) // Checking Yin erosion, stun, etc.
+        // 2-3. 행동 가능 상태 검사
+        if (unit.IsUnableToAct())
         {
-            Debug.Log($"[{unit.unitName}] is unable to act. Skipping action.");
-            // Skips Action (2-4), goes directly to Resolve (2-5)
+            Debug.Log($"[{unit.unitName}] 행동 불가 상태입니다. 턴을 건너뜁니다.");
+            // 행동을 건너뛰고 곧바로 정산 단계로 이동
         }
         else
         {
-            // 2-4. Action Execution
-            if (unit.IsForcedToActRandomly()) // Checking Yang erosion
+            // 2-4. 행동 실행
+            if (unit.IsForcedToActRandomly())
             {
                 yield return StartCoroutine(ExecuteRandomAction(unit));
             }
@@ -100,42 +100,38 @@ public class RoundManager : MonoBehaviour
             }
         }
 
-        // 2-5. Result Resolve & Death Check
+        // 2-5. 행동 결과 정산 및 사망자 체크
         combatResolver.ResolveCombatResults(allUnits);
 
-        // 2-6. Turn End Event (Must execute even if action was skipped)
+        // 2-6. 턴 종료 시점 이벤트 발동 (행동을 스킵했더라도 쿨타임은 감소해야 함)
         statusManager.OnTurnEnd(unit);
 
-        Debug.Log($"[{unit.unitName}] Turn End.");
-        // 2-7. Turn Returned (End of coroutine)
+        Debug.Log($"[{unit.unitName}] 턴 종료.");
     }
 
     // ========================================================================
-    // [Action Execution Coroutines (To be expanded in A-2)]
+    // [행동 실행 코루틴 대기 구역 (A-2 단계 등에서 구체화 예정)]
     // ========================================================================
     private IEnumerator WaitForPlayerAction(UnitControl unit)
     {
-        Debug.Log("Waiting for Player Input...");
-        // Placeholder: Will wait for BattleUIManager / PlayerInputHandler
+        Debug.Log("플레이어의 조작(입력)을 대기 중입니다...");
         yield return new WaitForSeconds(1.0f);
     }
 
     private IEnumerator ExecuteAIAction(UnitControl unit)
     {
-        Debug.Log("AI is deciding...");
-        // Placeholder: AI Utility Scoring logic will go here
+        Debug.Log("AI가 행동을 결정 중입니다...");
         yield return new WaitForSeconds(0.6f);
     }
 
     private IEnumerator ExecuteRandomAction(UnitControl unit)
     {
-        Debug.Log("<color=red>Unit is out of control! Acting randomly.</color>");
-        // Placeholder: Force random skill on random target
+        Debug.Log("<color=red>유닛이 제어권을 상실했습니다! 무작위로 행동합니다.</color>");
         yield return new WaitForSeconds(0.6f);
     }
 
     // ========================================================================
-    // [Utility Methods]
+    // [유틸리티 함수]
     // ========================================================================
     private List<UnitControl> GetAliveUnits()
     {

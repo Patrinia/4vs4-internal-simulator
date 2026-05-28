@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 
+// 전투 결과 정산 및 사망 처리 전문가
 public class CombatResolver
 {
     public void ResolveCombatResults(List<UnitControl> allUnits)

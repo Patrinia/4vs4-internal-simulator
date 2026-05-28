@@ -19,6 +19,7 @@ public class UnitControl : MonoBehaviour
     public Dictionary<AttributeType, int> currentAttributes = new Dictionary<AttributeType, int>();
 
     [Header("장착된 스킬")]
+    // 전투 시작 전, skillPool에서 선택된 4개의 스킬
     public List<SkillData> equippedSkills = new List<SkillData>();
 
     // ========================================================================
@@ -45,6 +46,7 @@ public class UnitControl : MonoBehaviour
         }
     }
 
+    // 라운드 시작 시 속도 굴림 함수
     public void RollCurrentSpeed()
     {
         if (SourceData != null)
@@ -53,6 +55,7 @@ public class UnitControl : MonoBehaviour
         }
     }
 
+    // 속성 증감 조작 함수
     public void ModifyAttribute(AttributeType type, int amount)
     {
         if (currentAttributes.ContainsKey(type))
@@ -67,7 +70,7 @@ public class UnitControl : MonoBehaviour
     // [2. A-1 파이프라인 연동 로직 (새로 추가된 부분)]
     // ========================================================================
 
-    // Phase 2-3. 행동 불가 상태 확인 (음기 과다)
+    // Phase 2-3. 행동 불가 상태 확인 (음기 침식)
     public bool IsUnableToAct()
     {
         if (currentAttributes.TryGetValue(AttributeType.YinYang, out int yinYangValue))
@@ -80,7 +83,7 @@ public class UnitControl : MonoBehaviour
         return false;
     }
 
-    // Phase 2-4. 강제 무작위 행동 상태 확인 (양기 과다)
+    // Phase 2-4. 강제 무작위 행동 상태 확인 (양기 침식)
     public bool IsForcedToActRandomly()
     {
         if (currentAttributes.TryGetValue(AttributeType.YinYang, out int yinYangValue))
