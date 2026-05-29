@@ -7,6 +7,7 @@ public class UnitData : ScriptableObject
     [Header("식별 데이터 (엑셀 연동)")]
     public string unitID;            // 유닛 고유 ID
     public string unitName;          // 유닛 이름
+    public int unitRank;             // 유닛의 등급 (0등급 ~ 5등급)
 
     [Header("기본 스탯 (엑셀 연동)")]
     public int maxHP;                // 최대 체력

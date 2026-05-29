@@ -1,8 +1,39 @@
 ﻿using System.Collections.Generic;
+using UnityEngine;
 
+// 스킬의 난수 굴림, 버프/디버프 연산, 그리고 최종 적용을 담당하는 전문가
 // 전투 결과 정산 및 사망 처리 전문가
 public class CombatResolver
 {
+    // 스킬 사용 시 데미지 및 회복 연산 파이프라인
+    public void ApplySkillAction(UnitControl caster, UnitControl target, SkillData skill)
+    {
+        // 1. 위력 난수 굴림 (최소 ~ 최대 범위)
+        // 주의: Random.Range(int, int)에서 최댓값은 포함되지 않으므로 +1을 해줍니다.
+        int baseValue = Random.Range(skill.minPower, skill.maxPower + 1);
+
+        // 2. 버프/디버프 연산 (기믹 파이프라인)
+        // TODO: 향후 StatusEffectManager에서 현재 걸려있는 공격력/방어력 버프 수치를 가져와 곱합니다.
+        float buffMultiplier = 1.0f;   // 예: 시전자의 공격력 증가
+        float debuffMultiplier = 1.0f; // 예: 피격자의 방어력 증가
+
+        int finalValue = Mathf.RoundToInt(baseValue * buffMultiplier * debuffMultiplier);
+
+        // 3. 데미지 vs 회복 판별 및 적용
+        // 스킬의 성향 태그(Tendency)에 'Heal(치유형)'이 포함되어 있다면 회복으로 처리합니다.
+        if (skill.skillTendencies.Contains(TendencyType.Heal))
+        {
+            target.HealHP(finalValue);
+            Debug.Log($"<color=green>[{caster.unitName}]가 [{target.unitName}]의 체력을 {finalValue}만큼 회복시켰습니다!</color>");
+        }
+        else
+        {
+            // 그 외의 공격형/제어형 등은 데미지로 판별하여 깎습니다.
+            target.TakeDamage(finalValue);
+            Debug.Log($"<color=red>[{caster.unitName}]가 [{target.unitName}]에게 {finalValue}의 데미지를 입혔습니다!</color>");
+        }
+    }
+
     public void ResolveCombatResults(List<UnitControl> allUnits)
     {
         //Phase 2-5

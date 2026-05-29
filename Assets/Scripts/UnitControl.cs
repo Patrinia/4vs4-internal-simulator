@@ -108,4 +108,17 @@ public class UnitControl : MonoBehaviour
             // '불사(1턴 버티기)' 버프 기믹을 위해, 사망 판정은 CombatResolver가 일괄 수행합니다.
         }
     }
+
+    // 체력 회복 함수 (최대 체력 제한 적용)
+    public void HealHP(int amount)
+    {
+        if (isDead) return;
+        currentHP += amount;
+
+        // 회복량이 최대 체력을 넘지 않도록 제한
+        if (currentHP > SourceData.maxHP)
+        {
+            currentHP = SourceData.maxHP;
+        }
+    }
 }
