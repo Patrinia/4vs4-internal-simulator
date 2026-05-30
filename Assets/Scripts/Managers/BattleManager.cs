@@ -131,6 +131,9 @@ public class BattleManager : MonoBehaviour
         // 2-6. 턴 종료 시점 이벤트 발동
         statusManager.OnTurnEnd(unit);
 
+        // [업데이트] 턴이 종료될 때 해당 유닛의 모든 스킬 쿨타임을 1씩 감소시킵니다.
+        unit.DecreaseCooldowns();
+
         Debug.Log($"[{unit.unitName}] 턴 종료.");
     }
 
@@ -144,13 +147,47 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForSeconds(1.0f);
     }
 
+    /// <summary>
+    /// [1순위 작업 완료] 5단계 전술 파이프라인을 관장하는 AI 실행부입니다.
+    /// </summary>
     private IEnumerator ExecuteAIAction(UnitControl unit)
     {
         Debug.Log($"{unit.unitName} (AI)가 전황을 분석 중입니다...");
         yield return new WaitForSeconds(0.6f); // 봇이 고민하는 듯한 시각적 딜레이
 
-        // TODO: 2번 작업(인터페이스 업데이트)이 완료되면, 이곳에서 AI의 두뇌를 꺼내어
-        // SelectNextSkill(..., FormationManager)를 호출하고 리졸버에게 집행을 명령하는 로직이 추가됩니다.
+        // 1단계: 쿨타임 검사 필터링 (사용 가능한 스킬 추려내기)
+        List<SkillData> usableSkills = new List<SkillData>();
+        foreach (SkillData skill in unit.equippedSkills)
+        {
+            if (unit.GetCooldown(skill) == 0) usableSkills.Add(skill);
+        }
+
+        // 안전장치
+        if (unit.Brain == null || usableSkills.Count == 0)
+        {
+            Debug.Log($"[{unit.unitName}] 행동 불가: 사용 가능한 스킬이 없거나 두뇌가 없습니다.");
+            yield break;
+        }
+
+        // 2단계: 최신 진형 주입 및 두뇌 의사결정 요청
+        ActionDecision decision = unit.Brain.SelectNextSkill(usableSkills, allUnits, FormationManager);
+
+        // 3단계: 의사결정 검증 (Bypass 체크)
+        if (decision == null || decision.SelectedSkill == null || decision.MainTarget == null)
+        {
+            Debug.Log($"[{unit.unitName}] 판단 결과: 현재 상황에 유리한 행동이 없어 방어 태세를 취합니다 (턴 스킵).");
+            yield break; // 코루틴을 종료하고 즉시 턴 정산으로 넘어감
+        }
+
+        // 4단계: 심판관 호출 및 실집행
+        Debug.Log($"<color=yellow>[{unit.unitName}] (이)가 [{decision.SelectedSkill.skillName}] 스킬을 시전!</color>");
+        yield return new WaitForSeconds(0.5f); // 스킬 시전 애니메이션 딜레이 연출
+
+        // 결재 서류를 그대로 넘겨주어 메인 타겟과 서브 타겟을 처리하게 합니다.
+        combatResolver.ExecuteAction(unit, decision);
+
+        // 5단계: 사용한 스킬에 고유 쿨타임 적용
+        unit.SetCooldown(decision.SelectedSkill, decision.SelectedSkill.maxCooldown);
     }
 
     private IEnumerator ExecuteRandomAction(UnitControl unit)

@@ -11,7 +11,7 @@ public class UnitControl : MonoBehaviour
     [Header("원본 데이터 참조")]
     public UnitData SourceData { get; private set; }
 
-    // [업데이트] BattleManager에서 unit.unitName으로 안전하게 접근할 수 있도록 제공하는 프로퍼티
+    // BattleManager에서 unit.unitName으로 안전하게 접근할 수 있도록 제공하는 프로퍼티
     public string unitName => SourceData != null ? SourceData.unitName : "Unknown";
 
     [Header("실시간 전투 스탯")]
@@ -30,8 +30,11 @@ public class UnitControl : MonoBehaviour
     // 전투 시작 전, skillPool에서 선택된 4개의 스킬
     public List<SkillData> equippedSkills = new List<SkillData>();
 
-    // 의존성 역전을 위한 추상화된 뇌
-    private IUnitBrain brain;
+    // [업데이트] 의존성 역전을 위한 추상화된 뇌 (BattleManager가 접근할 수 있도록 프로퍼티로 변경)
+    public IUnitBrain Brain { get; private set; }
+
+    // [업데이트] 실시간 쿨타임 추적 데이터베이스
+    private Dictionary<SkillData, int> skillCooldowns = new Dictionary<SkillData, int>();
 
     // ========================================================================
     // [1. 초기화 및 기본 로직]
@@ -45,6 +48,8 @@ public class UnitControl : MonoBehaviour
         isDead = false;
 
         currentAttributes.Clear();
+        skillCooldowns.Clear(); // [업데이트] 쿨타임 초기화
+
         if (data.baseAttributes != null)
         {
             foreach (var attr in data.baseAttributes)
@@ -62,9 +67,9 @@ public class UnitControl : MonoBehaviour
     /// </summary>
     public void SetBrain(IUnitBrain newBrain)
     {
-        brain = newBrain;
+        Brain = newBrain;
         // 장착과 동시에 뇌(Brain)에게 이 유닛의 신체 정보와 스킬 정보를 넘겨줍니다.
-        brain.Initialize(this, equippedSkills);
+        Brain.Initialize(this, equippedSkills);
     }
 
     // 라운드 시작 시 속도 굴림 함수
@@ -77,7 +82,7 @@ public class UnitControl : MonoBehaviour
     }
 
     /// <summary>
-    /// 속성 증감 조작 및 폭주 즉사 판정
+    /// 속성 증감 조작 및 침식 즉사 판정
     /// </summary>
     public void ModifyAttribute(AttributeType type, int amount)
     {
@@ -155,6 +160,30 @@ public class UnitControl : MonoBehaviour
         if (currentHP > SourceData.maxHP)
         {
             currentHP = SourceData.maxHP;
+        }
+    }
+
+    // ========================================================================
+    // [3. 전투 자원 및 쿨타임 관리 로직 (신규)]
+    // ========================================================================
+
+    public int GetCooldown(SkillData skill)
+    {
+        if (skillCooldowns.TryGetValue(skill, out int cooldown)) return cooldown;
+        return 0; // 사전에 등록되지 않은 스킬이면 쿨타임 0으로 취급
+    }
+
+    public void SetCooldown(SkillData skill, int turns)
+    {
+        skillCooldowns[skill] = turns;
+    }
+
+    public void DecreaseCooldowns()
+    {
+        List<SkillData> keys = new List<SkillData>(skillCooldowns.Keys);
+        foreach (var key in keys)
+        {
+            if (skillCooldowns[key] > 0) skillCooldowns[key]--;
         }
     }
 }
