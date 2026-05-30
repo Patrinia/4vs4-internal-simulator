@@ -34,6 +34,23 @@ public class CombatResolver
         }
     }
 
+    /// <summary>
+    /// [신규 추가] 킬 캐치(Kill Catch) 판단을 위한 가상 데미지 예측기.
+    /// 실제로 유닛의 체력을 깎지 않고, 예상되는 평균 위력만을 반환합니다.
+    /// </summary>
+    public static int PredictDamage(UnitControl attacker, UnitControl target, SkillData skill)
+    {
+        if (attacker == null || target == null || skill == null) return 0;
+
+        // 1. 스킬의 순수 평균 위력 계산
+        int averageBasePower = (skill.minPower + skill.maxPower) / 2;
+
+        // (향후 이곳에 attacker의 버프 상태나 음/양 충만 상태에 따른 데미지 증폭 연산이 추가될 수 있습니다.)
+        int predictedDamage = averageBasePower;
+
+        return predictedDamage;
+    }
+
     public void ResolveCombatResults(List<UnitControl> allUnits)
     {
         //Phase 2-5

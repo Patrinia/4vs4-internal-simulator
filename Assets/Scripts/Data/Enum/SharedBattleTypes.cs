@@ -26,3 +26,15 @@ public enum TendencyType
     Control = 4,      // 턴 스킵, 기절 등 제어 위주
     Utility = 5       // 게이지 조작, 진형 파괴 등 유틸리티 위주
 }
+
+/// <summary>
+/// 기획자가 엑셀에서 지정할 유닛의 두뇌(지능) 타입입니다.
+/// </summary>
+public enum AIBrainType
+{
+    None = 0,
+    Player = 1,      // 플레이어 조작 (HumanBrain - UI 입력 대기)
+    Random = 2,      // 무작위 행동 (RandomActionBrain)
+    Sequence = 3,    // 순차적 행동 (SequenceActionBrain)
+    Strategic = 4    // 전황 분석 행동 (StrategicActionBrain - 보스급 지능)
+}

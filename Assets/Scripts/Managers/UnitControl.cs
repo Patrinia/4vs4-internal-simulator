@@ -1,6 +1,12 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 
+// ====================================================
+// [UnitControl.cs]
+// 전장에 스폰된 유닛 객체의 실시간 상태와 체력/속성 변수를 관리합니다.
+// ====================================================
+
+
 public class UnitControl : MonoBehaviour
 {
     [Header("원본 데이터 참조")]
@@ -15,12 +21,18 @@ public class UnitControl : MonoBehaviour
     public bool isDead = false;  // 사망 여부 플래그
     public bool isPlayer;        // 아군/적군 판별 플래그
 
+    // 게이지 임계치 초과로 인한 침식 즉사 상태 플래그
+    public bool isCorrosioned = false;
+
     [Header("실시간 속성 수치 관리")]
     public Dictionary<AttributeType, int> currentAttributes = new Dictionary<AttributeType, int>();
 
     [Header("장착된 스킬")]
     // 전투 시작 전, skillPool에서 선택된 4개의 스킬
     public List<SkillData> equippedSkills = new List<SkillData>();
+
+    // 의존성 역전을 위한 추상화된 뇌
+    private IUnitBrain brain;
 
     // ========================================================================
     // [1. 초기화 및 기본 로직]
@@ -46,6 +58,17 @@ public class UnitControl : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 유닛의 뇌를 장착합니다. (AI, Human 등 다양한 뇌 교체 가능)
+    /// </summary>
+    public void SetBrain(IUnitBrain newBrain)
+    {
+        brain = newBrain;
+        // 장착과 동시에 뇌(Brain)에게 이 유닛의 신체 정보와 스킬 정보를 넘겨줍니다.
+        brain.Initialize(this, equippedSkills);
+    }
+
+
     // 라운드 시작 시 속도 굴림 함수
     public void RollCurrentSpeed()
     {
@@ -55,14 +78,33 @@ public class UnitControl : MonoBehaviour
         }
     }
 
-    // 속성 증감 조작 함수
+    /// <summary>
+    /// 속성 증감 조작 및 폭주 즉사 판정
+    /// </summary>
     public void ModifyAttribute(AttributeType type, int amount)
     {
         if (currentAttributes.ContainsKey(type))
         {
-            currentAttributes[type] += amount;
-            // 게이지 한계치 고정 (0 ~ 100)
-            currentAttributes[type] = Mathf.Clamp(currentAttributes[type], 0, 100);
+            int nextValue = currentAttributes[type] + amount;
+
+            // 음/양 속성일 경우 임계치 초과 검사
+            if (type == AttributeType.YinYang)
+            {
+                if (nextValue < 0 || nextValue > 100)
+                {
+                    Debug.Log($"<color=red><b>[{unitName}]</b>가 음양침식을 버티지 못하고 사망합니다!</color>");
+
+                    isCorrosioned = true; // 침식 연출용 플래그 On
+                    TakeDamage(SourceData.maxHP); // 최대 체력만큼 데미지를 주어 즉사 처리
+
+                    // 수치는 연출을 위해 극단값(0 또는 100)으로 고정해 둡니다.
+                    currentAttributes[type] = nextValue < 0 ? 0 : 100;
+                    return; // 연산 즉시 종료
+                }
+            }
+
+            // 임계치를 돌파하지 않았다면 정상적으로 한계치 내에서 증감(Clamp)
+            currentAttributes[type] = Mathf.Clamp(nextValue, 0, 100);
         }
     }
 

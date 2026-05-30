@@ -23,6 +23,10 @@ public class UnitData : ScriptableObject
     // 가상 봇은 이 목록 중에서 페르소나 점수가 높은 4개를 골라 UnitControl에 장착합니다.
     public List<SkillData> skillPool = new List<SkillData>();
 
+    [Header("AI 시스템 (엑셀 연동 - 마지막 열)")]
+    // 엑셀의 가장 마지막 열에서 파싱될 이 유닛의 기본 뇌 타입
+    public AIBrainType defaultAIBrainType;
+
     [Header("비주얼 에셋 (유니티 에디터 할당)")]
     public GameObject unitPrefab;    // 캐릭터 외형 프리팹
     public Sprite unitPortrait;      // 캐릭터 초상화 이미지
