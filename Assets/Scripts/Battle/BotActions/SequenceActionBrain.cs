@@ -7,16 +7,18 @@ using UnityEngine;
 // ====================================================
 public class SequenceActionBrain : IUnitBrain
 {
+    private UnitControl myUnit;
     private List<SkillData> myEquippedSkills;
     private int currentStep = 0;
 
     public void Initialize(UnitControl unit, List<SkillData> equippedSkills)
     {
+        myUnit = unit;
         myEquippedSkills = equippedSkills;
         currentStep = 0; // 전투 시작 시 첫 번째 패턴으로 초기화
     }
 
-    public SkillData SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits)
+    public ActionDecision SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits)
     {
         if (myEquippedSkills == null || myEquippedSkills.Count == 0 || usableSkills.Count == 0)
             return null;
@@ -35,6 +37,23 @@ public class SequenceActionBrain : IUnitBrain
             return usableSkills[0];
         }
 
-        return targetSkill;
+        List<UnitControl> targets = GetRandomValidTargets(targetSkill, allUnits);
+
+        return new ActionDecision(targetSkill, targets);
+    }
+
+    private List<UnitControl> GetRandomValidTargets(SkillData skill, List<UnitControl> allUnits)
+    {
+        List<UnitControl> enemies = allUnits.FindAll(u => !u.isDead && u.isPlayer != myUnit.isPlayer);
+        List<UnitControl> allies = allUnits.FindAll(u => !u.isDead && u.isPlayer == myUnit.isPlayer);
+
+        switch (skill.targetType)
+        {
+            case TargetType.Self: return new List<UnitControl> { myUnit };
+            case TargetType.AllEnemies: return enemies;
+            case TargetType.SingleEnemy:
+                return enemies.Count > 0 ? new List<UnitControl> { enemies[Random.Range(0, enemies.Count)] } : new List<UnitControl>();
+            default: return new List<UnitControl>();
+        }
     }
 }

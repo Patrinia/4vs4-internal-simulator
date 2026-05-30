@@ -14,7 +14,7 @@ public class StrategicActionBrain : IUnitBrain
 
     public void Initialize(UnitControl unit, List<SkillData> equippedSkills)
     {
-        myUnit = unit;
+        myUnit = unit; // 피아식별을 위해 자신을 기억
 
         // 뇌 내부에 자아와 전황 분석기 모듈을 조립합니다.
         personaBrain = new AIPersonaBrain();
@@ -24,7 +24,7 @@ public class StrategicActionBrain : IUnitBrain
         personaBrain.BuildPersona(equippedSkills);
     }
 
-    public SkillData SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits)
+    public ActionDecision SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits)
     {
         if (usableSkills == null || usableSkills.Count == 0) return null;
 
@@ -33,30 +33,70 @@ public class StrategicActionBrain : IUnitBrain
 
         foreach (SkillData skill in usableSkills)
         {
-            // 1. 페르소나 배수 추출 (이 스킬이 내 성향에 얼마나 맞는가?)
+            // 페르소나 배수 추출 (이 스킬이 내 성향에 얼마나 맞는가?)
             float personaMult = personaBrain.GetPersonaMultiplier(skill);
 
-            // 2. 전황 배수 추출 (이 스킬이 지금 얼마나 절박하게 필요한가?)
-            float contextMult = contextEvaluator.GetContextMultiplier(myUnit, skill, allUnits);
+            // 해당 스킬로 공격 가능한 '모든 경우의 수(타겟 그룹)'를 가져옵니다.
+            List<List<UnitControl>> possibleTargetGroups = GetPossibleTargetGroups(skill, allUnits);
 
-            // 3. 최종 점수(Utility Score) 연산
-            float finalScore = 1.0f + (personaMult * contextMult);
+            // 각각의 경우의 수를 순회하며 가치를 평가합니다.
+            foreach (List<UnitControl> targets in possibleTargetGroups)
+            {
+                if (targets.Count == 0) continue; // 유효한 타겟이 없으면 스킵
 
-            // 신기록 갱신: 기존 동점 리스트를 날려버리고 새 스킬을 등록
-            if (finalScore > maxScore)
-            {
-                maxScore = finalScore;
-                tiedSkills.Clear();
-                tiedSkills.Add(skill);
-            }
-            // 동점 발생: 리스트에 스킬을 추가하여 후보군 보존
-            else if (Mathf.Approximately(finalScore, maxScore))
-            {
-                tiedSkills.Add(skill);
+                float contextMult = contextEvaluator.GetContextMultiplier(myUnit, skill, targets);
+                float finalScore = 1.0f + (personaMult * contextMult);
+
+                ActionDecision newDecision = new ActionDecision(skill, targets);
+
+                if (finalScore > maxScore)
+                {
+                    maxScore = finalScore;
+                    tiedDecisions.Clear();
+                    tiedDecisions.Add(newDecision);
+                }
+                else if (Mathf.Approximately(finalScore, maxScore))
+                {
+                    tiedDecisions.Add(newDecision);
+                }
             }
         }
 
+        if (tiedDecisions.Count == 0) return null;
+
         // 동점인 스킬이 여러 개라면 그 중 하나를 무작위로 선택하여 예측 불가능성 부여
         return tiedSkills[Random.Range(0, tiedSkills.Count)];
+    }
+
+    // [최적화 및 시나리오 헬퍼]
+    private List<List<UnitControl>> GetPossibleTargetGroups(SkillData skill, List<UnitControl> allUnits)
+    {
+        List<List<UnitControl>> groups = new List<List<UnitControl>>();
+        List<UnitControl> enemies = allUnits.FindAll(u => !u.isDead && u.isPlayer != myUnit.isPlayer);
+        List<UnitControl> allies = allUnits.FindAll(u => !u.isDead && u.isPlayer == myUnit.isPlayer);
+
+        // TODO: 도발 기믹이 추가되면 여기서 enemies 리스트를 도발 유닛만 남도록 필터링합니다.
+
+        switch (skill.targetType)
+        {
+            case TargetType.Self:
+                groups.Add(new List<UnitControl> { myUnit });
+                break;
+            case TargetType.AllEnemies:
+                // 광역기 Bypass: 경우의 수를 적 1명씩 나누지 않고 '전체 적'이라는 1개의 경우의 수만 생성
+                groups.Add(enemies);
+                break;
+            case TargetType.AllAllies:
+                groups.Add(allies);
+                break;
+            case TargetType.SingleEnemy:
+                // 단일기: 적의 수만큼 경우의 수를 쪼개서 각각 테스트
+                foreach (var e in enemies) groups.Add(new List<UnitControl> { e });
+                break;
+            case TargetType.SingleAlly:
+                foreach (var a in allies) groups.Add(new List<UnitControl> { a });
+                break;
+        }
+        return groups;
     }
 }

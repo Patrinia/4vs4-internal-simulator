@@ -3,8 +3,12 @@ using UnityEngine;
 
 // ====================================================
 // [ContextEvaluator.cs]
-// 전장의 실시간 상황(체력, 음/양 변수 등)을 분석하여
-// 특정 스킬이 현재 얼마나 절박하게 필요한지 '상황 배수(Context Multiplier)'를 산출합니다.
+// 전장의 실시간 상황(체력, 음/양 변수 등)과
+// 스킬의 타겟수(단일 타겟인지 광역기인지)를 모두 고려하여
+// 특정 스킬이 현재 얼마나 절박하게 필요한지(특정 스킬의 최종 가치를)
+// '상황 배수(Context Multiplier)'로 산출합니다.
+
+// '평균 가치 + 광역 보너스' 산식으로 산출하는 전황 분석기입니다.
 // ====================================================
 public class ContextEvaluator
 {
@@ -12,16 +16,32 @@ public class ContextEvaluator
     /// 주어진 스킬이 현재 전황에서 얼마나 가치 있는지 판단하여 최종 가산 배수를 반환합니다.
     /// 기본값은 1.0f이며, 각 딜레마 상황의 절박함에 따라 가산(+)됩니다.
     /// </summary>
-    public float GetContextMultiplier(UnitControl caster, SkillData skill, List<UnitControl> allUnits)
+    public float GetContextMultiplier(UnitControl caster, SkillData skill, List<UnitControl> targets)
     {
         float finalMultiplier = 1.0f;
 
-        if (caster == null || skill == null) return finalMultiplier;
+        if (caster == null || skill == null || targets == null || targets.Count == 0)
+            return finalMultiplier;
 
-        // 3가지 핵심 전황 분석 로직을 독립적으로 통과하며 가산점을 누적합니다.
+        // 1. 시전자 본인 상태 기반 가산점 (타겟 수와 무관하게 1회만 계산)
         finalMultiplier += EvaluateDeathSwitch(caster, skill);
         finalMultiplier += EvaluateErosionDefense(caster, skill);
-        finalMultiplier += EvaluateKillCatch(caster, skill, allUnits);
+
+        // 2. 타겟 대상 가산점 산출 (킬 캐치 등)
+        float totalTargetScore = 0f;
+        foreach (var target in targets)
+        {
+            totalTargetScore += EvaluateKillCatch(caster, skill, target);
+        }
+
+        // 다중 타겟에 의한 점수 폭주(인플레이션)를 막기 위해 평균치 적용
+        float averageTargetScore = totalTargetScore / targets.Count;
+
+        // 3. 광역기 전략 보너스 (타겟이 1명이면 0점, 늘어날수록 0.1점씩 가산)
+        float aoeBonus = (targets.Count - 1) * 0.1f;
+
+        // 4. 최종 합산
+        finalMultiplier += averageTargetScore + aoeBonus;
 
         return finalMultiplier;
     }
@@ -89,25 +109,19 @@ public class ContextEvaluator
     // ====================================================
     // [전황 분석 모듈 3]: 킬 캐치 (처형 본능)
     // ====================================================
-    private float EvaluateKillCatch(UnitControl caster, SkillData skill, List<UnitControl> allUnits)
+    private float EvaluateKillCatch(UnitControl caster, SkillData skill, UnitControl target)
     {
         // 공격(Aggressive) 성향이 없는 스킬은 킬 캐치 고려 대상이 아님
         if (!skill.skillTendencies.Contains(TendencyType.Aggressive)) return 0f;
 
-        foreach (var target in allUnits)
-        {
-            // 사망한 유닛이거나 아군이면 타겟팅 계산에서 제외
-            if (target.isDead || target.isPlayer == caster.isPlayer) continue;
+        // 사망한 유닛이거나 아군이면 타겟팅 계산에서 제외
+        if (target.isDead || target.isPlayer == caster.isPlayer) return 0f;
 
-            // CombatResolver의 가상 예측 함수를 호출하여 순수 데미지 도출
-            int predictedDamage = CombatResolver.PredictDamage(caster, target, skill);
+        // CombatResolver의 가상 예측 데미지 호출 (추후 구현 예정)
+        // int predictedDamage = CombatResolver.PredictDamage(caster, target, skill);
+        int predictedDamage = skill.maxPower; // 현재는 최대 데미지로 가상 치환
 
-            // 해당 스킬로 적 하나를 확실하게 퇴각(사망)시킬 수 있다면
-            if (predictedDamage >= target.currentHP)
-            {
-                return 1.0f; // 기본 1.0 + 1.0 가산 = 총 2.0배 폭증 (발견 즉시 반환)
-            }
-        }
+        if (predictedDamage >= target.currentHP) return 1.0f; // 처형 가능 시 1점 가산
 
         return 0f;
     }
