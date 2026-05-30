@@ -24,13 +24,13 @@ public class StrategicActionBrain : IUnitBrain
         personaBrain.BuildPersona(equippedSkills);
     }
 
-    public ActionDecision SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits)
+    // [업데이트] FormationManager 매개변수 추가 및 전달
+    public ActionDecision SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits, FormationManager formationManager)
     {
         if (usableSkills == null || usableSkills.Count == 0) return null;
 
         float maxScore = -1f;
 
-        // [오류 수정] SkillData가 아니라 ActionDecision을 담아야 하며, 이름도 tiedDecisions로 맞춥니다.
         List<ActionDecision> tiedDecisions = new List<ActionDecision>(); // 동점 스킬 기록용 리스트
 
         foreach (SkillData skill in usableSkills)
@@ -38,11 +38,8 @@ public class StrategicActionBrain : IUnitBrain
             // 페르소나 배수 추출 (이 스킬이 내 성향에 얼마나 맞는가?)
             float personaMult = personaBrain.GetPersonaMultiplier(skill);
 
-            // 해당 스킬로 공격 가능한 '모든 경우의 수(타겟 그룹)'를 가져옵니다.
-            //List<List<UnitControl>> possibleTargetGroups = GetPossibleTargetGroups(skill, allUnits);
-
-            // 타겟팅 유틸리티를 통해 발생 가능한 모든 행동 시나리오를 가져옵니다.
-            List<ActionDecision> possibleDecisions = TargetingUtility.GetAllPossibleDecisions(skill, myUnit, allUnits);
+            // [업데이트] 타겟팅 유틸리티에 진형 정보를 넘겨 서브 타겟 경우의 수까지 포함하여 가져옵니다.
+            List<ActionDecision> possibleDecisions = TargetingUtility.GetAllPossibleDecisions(skill, myUnit, allUnits, formationManager);
 
             foreach (ActionDecision decision in possibleDecisions)
             {
@@ -71,5 +68,4 @@ public class StrategicActionBrain : IUnitBrain
         // 동점인 스킬이 여러 개라면 그 중 하나를 무작위로 선택하여 예측 불가능성 부여
         return tiedDecisions[Random.Range(0, tiedDecisions.Count)];
     }
-
 }

@@ -18,7 +18,8 @@ public class SequenceActionBrain : IUnitBrain
         currentStep = 0; // 전투 시작 시 첫 번째 패턴으로 초기화
     }
 
-    public ActionDecision SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits)
+    // [업데이트] FormationManager 매개변수 추가 및 전달
+    public ActionDecision SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits, FormationManager formationManager)
     {
         if (myEquippedSkills == null || myEquippedSkills.Count == 0 || usableSkills.Count == 0)
             return null;
@@ -37,25 +38,11 @@ public class SequenceActionBrain : IUnitBrain
             targetSkill = usableSkills[0];
         }
 
-        List<ActionDecision> possibleDecisions = TargetingUtility.GetAllPossibleDecisions(targetSkill, myUnit, allUnits);
+        // 진형 정보를 유틸리티에 전달하여 서브 타겟까지 완벽하게 계산합니다.
+        List<ActionDecision> possibleDecisions = TargetingUtility.GetAllPossibleDecisions(targetSkill, myUnit, allUnits, formationManager);
 
         if (possibleDecisions.Count == 0) return null;
 
         return possibleDecisions[Random.Range(0, possibleDecisions.Count)];
     }
-
-    //private List<UnitControl> GetRandomValidTargets(SkillData skill, List<UnitControl> allUnits)
-    //{
-    //    List<UnitControl> enemies = allUnits.FindAll(u => !u.isDead && u.isPlayer != myUnit.isPlayer);
-    //    List<UnitControl> allies = allUnits.FindAll(u => !u.isDead && u.isPlayer == myUnit.isPlayer);
-
-    //    switch (skill.targetType)
-    //    {
-    //        case TargetType.Self: return new List<UnitControl> { myUnit };
-    //        case TargetType.AllEnemies: return enemies;
-    //        case TargetType.SingleEnemy:
-    //            return enemies.Count > 0 ? new List<UnitControl> { enemies[Random.Range(0, enemies.Count)] } : new List<UnitControl>();
-    //        default: return new List<UnitControl>();
-    //    }
-    //}
 }

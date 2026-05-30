@@ -6,12 +6,12 @@ public static class TargetingUtility
     /// <summary>
     /// 해당 스킬로 지정할 수 있는 모든 타겟팅 경우의 수를 ActionDecision 리스트로 반환합니다.
     /// </summary>
-    public static List<ActionDecision> GetAllPossibleDecisions(SkillData skill, UnitControl caster, List<UnitControl> allUnits)
+    public static List<ActionDecision> GetAllPossibleDecisions(SkillData skill, UnitControl caster, List<UnitControl> allUnits, FormationManager formationManager)
     {
         List<ActionDecision> possibleDecisions = new List<ActionDecision>();
         List<UnitControl> validTargets = new List<UnitControl>();
 
-        // 1. 피아식별 필터링 (새로운 TargetType 적용)
+        // 1. 피아식별 필터링
         if (skill.targetType == TargetType.Enemy)
             validTargets = allUnits.FindAll(u => !u.isDead && u.isPlayer != caster.isPlayer);
         else if (skill.targetType == TargetType.Ally)
@@ -37,8 +37,8 @@ public static class TargetingUtility
             // 3. 단일 및 부분 광역기: 각 유닛을 메인 타겟으로 삼는 모든 경우의 수 생성
             foreach (var target in validTargets)
             {
-                List<UnitControl> subs = new List<UnitControl>();
-                // TODO: FormationManager가 완성되면 skill.subTargetOffsets를 기반으로 서브 타겟 추출 연동
+                // [핵심 변경점] FormationManager를 통해 안전하게 서브 타겟 리스트를 추출합니다.
+                List<UnitControl> subs = formationManager.GetSubTargets(target, skill.subTargetOffsets);
                 possibleDecisions.Add(new ActionDecision(skill, target, subs));
             }
         }

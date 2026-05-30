@@ -6,13 +6,12 @@ using System.Collections.Generic;
 // 전장에 스폰된 유닛 객체의 실시간 상태와 체력/속성 변수를 관리합니다.
 // ====================================================
 
-
 public class UnitControl : MonoBehaviour
 {
     [Header("원본 데이터 참조")]
     public UnitData SourceData { get; private set; }
 
-    // RoundManager에서 unit.unitName으로 접근할 수 있도록 제공하는 프로퍼티
+    // [업데이트] BattleManager에서 unit.unitName으로 안전하게 접근할 수 있도록 제공하는 프로퍼티
     public string unitName => SourceData != null ? SourceData.unitName : "Unknown";
 
     [Header("실시간 전투 스탯")]
@@ -68,7 +67,6 @@ public class UnitControl : MonoBehaviour
         brain.Initialize(this, equippedSkills);
     }
 
-
     // 라운드 시작 시 속도 굴림 함수
     public void RollCurrentSpeed()
     {
@@ -107,10 +105,6 @@ public class UnitControl : MonoBehaviour
             currentAttributes[type] = Mathf.Clamp(nextValue, 0, 100);
         }
     }
-
-    // ========================================================================
-    // [2. A-1 파이프라인 연동 로직 (새로 추가된 부분)]
-    // ========================================================================
 
     // Phase 2-3. 행동 불가 상태 확인 (음기 침식)
     public bool IsUnableToAct()
