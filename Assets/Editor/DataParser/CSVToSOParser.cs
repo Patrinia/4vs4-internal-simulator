@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 using System.IO;
 using System;
@@ -64,7 +64,8 @@ public class CSVToSOParser : EditorWindow
 
             string[] columns = lines[i].Split(',');
 
-            // CSV 컬럼 순서 {ID(0), Name(1), Category(2), Desc(3), Cooldown(4), MinPower(5), MaxPower(6), TargetType(7), Tendencies(8), AttributesModifiers(9)}
+            // CSV 컬럼 순서: ID(0), Name(1), Tendencies(2), Category(3), TargetType(4), MaxTargetCount(5), 
+            // SubTargetOffsets(6), SubTargetDamageRatio(7), MinPower(8), MaxPower(9), MaxCooldown(10), AttrMods(11), Desc(12)
             string skillID = columns[0];
 
             string assetPath = $"{skillDataPath}/{skillID}.asset";
@@ -80,27 +81,43 @@ public class CSVToSOParser : EditorWindow
             // 데이터 덮어쓰기
             skillData.skillID = skillID;
             skillData.skillName = columns[1];
-            skillData.category = (SkillCategory)Enum.Parse(typeof(SkillCategory), columns[2]);
-            skillData.description = columns[3];
-            skillData.maxCooldown = int.Parse(columns[4]);
-            skillData.minPower = int.Parse(columns[5]);
-            skillData.maxPower = int.Parse(columns[6]);
-            skillData.targetType = (TargetType)Enum.Parse(typeof(TargetType), columns[7]);
 
             skillData.skillTendencies.Clear();
-            if (!string.IsNullOrEmpty(columns[8]))
+            if (!string.IsNullOrEmpty(columns[2]))
             {
-                string[] tendencies = columns[8].Split(';');
+                string[] tendencies = columns[2].Split(';');
                 foreach (string t in tendencies)
                 {
                     skillData.skillTendencies.Add((TendencyType)Enum.Parse(typeof(TendencyType), t));
                 }
             }
 
-            skillData.attributeModifiers.Clear();
-            if (!string.IsNullOrEmpty(columns[9]))
+            skillData.category = (SkillCategory)Enum.Parse(typeof(SkillCategory), columns[3]);
+            skillData.targetType = (TargetType)Enum.Parse(typeof(TargetType), columns[4]);
+            skillData.maxTargetCount = int.Parse(columns[5]);
+
+            // 서브 타겟 오프셋 파싱 (예: -1;+1)
+            skillData.subTargetOffsets.Clear();
+            if (!string.IsNullOrEmpty(columns[6]))
             {
-                string[] modifiers = columns[9].Split(';');
+                string[] offsets = columns[6].Split(';');
+                foreach (string o in offsets)
+                {
+                    skillData.subTargetOffsets.Add(int.Parse(o));
+                }
+            }
+
+            // 공란(Empty) 예외 처리 추가 - 값이 없으면 0f 처리
+            skillData.subTargetDamageRatio = string.IsNullOrEmpty(columns[7]) ? 0f : float.Parse(columns[7]);
+
+            skillData.minPower = int.Parse(columns[8]);
+            skillData.maxPower = int.Parse(columns[9]);
+            skillData.maxCooldown = int.Parse(columns[10]);
+
+            skillData.attributeModifiers.Clear();
+            if (!string.IsNullOrEmpty(columns[11]))
+            {
+                string[] modifiers = columns[11].Split(';');
                 foreach (string m in modifiers)
                 {
                     string[] parts = m.Split(':');
@@ -112,6 +129,8 @@ public class CSVToSOParser : EditorWindow
                     skillData.attributeModifiers.Add(mod);
                 }
             }
+
+            skillData.description = columns.Length > 12 ? columns[12] : "";
 
             // 에셋 저장 및 어드레서블 등록
             if (isNew) AssetDatabase.CreateAsset(skillData, assetPath);
@@ -136,7 +155,8 @@ public class CSVToSOParser : EditorWindow
 
             string[] columns = lines[i].Split(',');
 
-            // CSV 컬럼 순서 {ID(0), Name(1), Rank(2), MaxHP(3), MinSpeed(4), MaxSpeed(5), Attributes(6), SkillPool(7)}
+            // CSV 컬럼 순서: UnitID(0), UnitName(1), UnitRank(2), AIBrainType(3), MaxHP(4), 
+            // MinSpeed(5), MaxSpeed(6), BaseAttributes(7), MoveSkill(8), UltiSkillPool(9), NormalSkillPool(10)
             string unitID = columns[0];
             string assetPath = $"{unitDataPath}/{unitID}.asset";
 
@@ -152,15 +172,16 @@ public class CSVToSOParser : EditorWindow
             unitData.unitID = unitID;
             unitData.unitName = columns[1];
             unitData.unitRank = int.Parse(columns[2]);
-            unitData.maxHP = int.Parse(columns[3]);
-            unitData.minSpeed = int.Parse(columns[4]);
-            unitData.maxSpeed = int.Parse(columns[5]);
+            unitData.defaultAIBrainType = (AIBrainType)Enum.Parse(typeof(AIBrainType), columns[3]);
+            unitData.maxHP = int.Parse(columns[4]);
+            unitData.minSpeed = int.Parse(columns[5]);
+            unitData.maxSpeed = int.Parse(columns[6]);
 
             // 시작 속성 파싱 (YinYang:50 형식)
             unitData.baseAttributes.Clear();
-            if (!string.IsNullOrEmpty(columns[6]))
+            if (!string.IsNullOrEmpty(columns[7]))
             {
-                string[] attrs = columns[6].Split(';');
+                string[] attrs = columns[7].Split(';');
                 foreach (string a in attrs)
                 {
                     string[] parts = a.Split(':');
@@ -173,17 +194,40 @@ public class CSVToSOParser : EditorWindow
                 }
             }
 
-            // 스킬 풀 파싱 (SkillID 텍스트를 기반으로 저장된 에셋을 찾아 연결)
-            unitData.skillPool.Clear();
-            if (!string.IsNullOrEmpty(columns[7]))
+            // 고정 이동 스킬 (8)
+            if (!string.IsNullOrEmpty(columns[8]))
             {
-                string[] skillIDs = columns[7].Split(';');
+                string targetSkillPath = $"{skillDataPath}/{columns[8]}.asset";
+                unitData.movementSkill = AssetDatabase.LoadAssetAtPath<SkillData>(targetSkillPath);
+            }
+            else
+            {
+                unitData.movementSkill = null;
+            }
+
+            // 필살기 풀 (9)
+            unitData.ultimateSkillPool.Clear();
+            if (!string.IsNullOrEmpty(columns[9]))
+            {
+                string[] skillIDs = columns[9].Split(';');
                 foreach (string sID in skillIDs)
                 {
                     string targetSkillPath = $"{skillDataPath}/{sID}.asset";
                     SkillData foundSkill = AssetDatabase.LoadAssetAtPath<SkillData>(targetSkillPath);
-                    if (foundSkill != null) unitData.skillPool.Add(foundSkill);
-                    else Debug.LogWarning($"[누락 알림] {unitID}의 스킬 풀에 추가하려는 {sID} 에셋을 찾을 수 없습니다.");
+                    if (foundSkill != null) unitData.ultimateSkillPool.Add(foundSkill);
+                }
+            }
+
+            // 일반 스킬 풀 (10)
+            unitData.normalSkillPool.Clear();
+            if (!string.IsNullOrEmpty(columns[10]))
+            {
+                string[] skillIDs = columns[10].Split(';');
+                foreach (string sID in skillIDs)
+                {
+                    string targetSkillPath = $"{skillDataPath}/{sID}.asset";
+                    SkillData foundSkill = AssetDatabase.LoadAssetAtPath<SkillData>(targetSkillPath);
+                    if (foundSkill != null) unitData.normalSkillPool.Add(foundSkill);
                 }
             }
 

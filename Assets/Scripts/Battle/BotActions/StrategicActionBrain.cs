@@ -29,7 +29,9 @@ public class StrategicActionBrain : IUnitBrain
         if (usableSkills == null || usableSkills.Count == 0) return null;
 
         float maxScore = -1f;
-        List<SkillData> tiedSkills = new List<SkillData>(); // 동점 스킬 기록용 리스트
+
+        // [오류 수정] SkillData가 아니라 ActionDecision을 담아야 하며, 이름도 tiedDecisions로 맞춥니다.
+        List<ActionDecision> tiedDecisions = new List<ActionDecision>(); // 동점 스킬 기록용 리스트
 
         foreach (SkillData skill in usableSkills)
         {
@@ -37,27 +39,29 @@ public class StrategicActionBrain : IUnitBrain
             float personaMult = personaBrain.GetPersonaMultiplier(skill);
 
             // 해당 스킬로 공격 가능한 '모든 경우의 수(타겟 그룹)'를 가져옵니다.
-            List<List<UnitControl>> possibleTargetGroups = GetPossibleTargetGroups(skill, allUnits);
+            //List<List<UnitControl>> possibleTargetGroups = GetPossibleTargetGroups(skill, allUnits);
 
-            // 각각의 경우의 수를 순회하며 가치를 평가합니다.
-            foreach (List<UnitControl> targets in possibleTargetGroups)
+            // 타겟팅 유틸리티를 통해 발생 가능한 모든 행동 시나리오를 가져옵니다.
+            List<ActionDecision> possibleDecisions = TargetingUtility.GetAllPossibleDecisions(skill, myUnit, allUnits);
+
+            foreach (ActionDecision decision in possibleDecisions)
             {
-                if (targets.Count == 0) continue; // 유효한 타겟이 없으면 스킵
+                // 평가를 위해 메인 타겟과 서브 타겟을 하나의 임시 리스트로 합칩니다.
+                List<UnitControl> totalTargets = new List<UnitControl> { decision.MainTarget };
+                totalTargets.AddRange(decision.SubTargets);
 
-                float contextMult = contextEvaluator.GetContextMultiplier(myUnit, skill, targets);
+                float contextMult = contextEvaluator.GetContextMultiplier(myUnit, skill, totalTargets);
                 float finalScore = 1.0f + (personaMult * contextMult);
-
-                ActionDecision newDecision = new ActionDecision(skill, targets);
 
                 if (finalScore > maxScore)
                 {
                     maxScore = finalScore;
                     tiedDecisions.Clear();
-                    tiedDecisions.Add(newDecision);
+                    tiedDecisions.Add(decision);
                 }
                 else if (Mathf.Approximately(finalScore, maxScore))
                 {
-                    tiedDecisions.Add(newDecision);
+                    tiedDecisions.Add(decision);
                 }
             }
         }
@@ -65,38 +69,7 @@ public class StrategicActionBrain : IUnitBrain
         if (tiedDecisions.Count == 0) return null;
 
         // 동점인 스킬이 여러 개라면 그 중 하나를 무작위로 선택하여 예측 불가능성 부여
-        return tiedSkills[Random.Range(0, tiedSkills.Count)];
+        return tiedDecisions[Random.Range(0, tiedDecisions.Count)];
     }
 
-    // [최적화 및 시나리오 헬퍼]
-    private List<List<UnitControl>> GetPossibleTargetGroups(SkillData skill, List<UnitControl> allUnits)
-    {
-        List<List<UnitControl>> groups = new List<List<UnitControl>>();
-        List<UnitControl> enemies = allUnits.FindAll(u => !u.isDead && u.isPlayer != myUnit.isPlayer);
-        List<UnitControl> allies = allUnits.FindAll(u => !u.isDead && u.isPlayer == myUnit.isPlayer);
-
-        // TODO: 도발 기믹이 추가되면 여기서 enemies 리스트를 도발 유닛만 남도록 필터링합니다.
-
-        switch (skill.targetType)
-        {
-            case TargetType.Self:
-                groups.Add(new List<UnitControl> { myUnit });
-                break;
-            case TargetType.AllEnemies:
-                // 광역기 Bypass: 경우의 수를 적 1명씩 나누지 않고 '전체 적'이라는 1개의 경우의 수만 생성
-                groups.Add(enemies);
-                break;
-            case TargetType.AllAllies:
-                groups.Add(allies);
-                break;
-            case TargetType.SingleEnemy:
-                // 단일기: 적의 수만큼 경우의 수를 쪼개서 각각 테스트
-                foreach (var e in enemies) groups.Add(new List<UnitControl> { e });
-                break;
-            case TargetType.SingleAlly:
-                foreach (var a in allies) groups.Add(new List<UnitControl> { a });
-                break;
-        }
-        return groups;
-    }
 }

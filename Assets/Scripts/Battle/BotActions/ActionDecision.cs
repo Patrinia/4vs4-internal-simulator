@@ -10,16 +10,17 @@ public class ActionDecision
     // 프로퍼티를 통해 외부에서는 읽기(get)만 가능하고, 
     // 생성할 때만 값(set)을 넣을 수 있도록 캡슐화(불변성 보장)합니다.
     public SkillData SelectedSkill { get; private set; }
-    public List<UnitControl> Targets { get; private set; }
+    public UnitControl MainTarget { get; private set; }
+    public List<UnitControl> SubTargets { get; private set; }
 
     /// <summary>
     /// ActionDecision 생성자
     /// </summary>
-    /// <param name="skill">뇌가 최종 선택한 스킬</param>
-    /// <param name="targets">해당 스킬을 적용할 대상 유닛 리스트</param>
-    public ActionDecision(SkillData skill, List<UnitControl> targets)
+    public ActionDecision(SkillData skill, UnitControl mainTarget, List<UnitControl> subTargets)
     {
         SelectedSkill = skill;
-        Targets = targets;
+        MainTarget = mainTarget;
+        // 서브 타겟이 null로 들어오면 빈 리스트로 안전하게 초기화합니다.
+        SubTargets = subTargets ?? new List<UnitControl>();
     }
 }

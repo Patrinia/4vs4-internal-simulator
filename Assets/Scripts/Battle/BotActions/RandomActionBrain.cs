@@ -7,6 +7,8 @@ using UnityEngine;
 // ====================================================
 public class RandomActionBrain : IUnitBrain
 {
+    private UnitControl myUnit;
+
     public void Initialize(UnitControl unit, List<SkillData> equippedSkills)
     {
         myUnit = unit; // 피아식별을 위해 자신을 기억
@@ -20,29 +22,13 @@ public class RandomActionBrain : IUnitBrain
         // 스킬 무작위 선택
         SkillData selectedSkill = usableSkills[Random.Range(0, usableSkills.Count)];
 
-        // 타겟 무작위 지정 (TargetType 기반)
-        List<UnitControl> targets = GetRandomValidTargets(selectedSkill, allUnits);
+        // 유틸리티를 호출하여 합법적인 모든 타겟 경우의 수를 받아옴
+        List<ActionDecision> possibleDecisions = TargetingUtility.GetAllPossibleDecisions(selectedSkill, myUnit, allUnits);
 
-        return new ActionDecision(selectedSkill, targets);
-    }
+        if (possibleDecisions.Count == 0) return null;
 
-    // [피아식별 및 타겟 자동 할당 헬퍼]
-    private List<UnitControl> GetRandomValidTargets(SkillData skill, List<UnitControl> allUnits)
-    {
-        List<UnitControl> enemies = allUnits.FindAll(u => !u.isDead && u.isPlayer != myUnit.isPlayer);
-        List<UnitControl> allies = allUnits.FindAll(u => !u.isDead && u.isPlayer == myUnit.isPlayer);
-
-        switch (skill.targetType)
-        {
-            case TargetType.Self: return new List<UnitControl> { myUnit };
-            case TargetType.AllEnemies: return enemies; // 광역기 Bypass (전체 반환)
-            case TargetType.AllAllies: return allies;
-            case TargetType.SingleEnemy:
-                return enemies.Count > 0 ? new List<UnitControl> { enemies[Random.Range(0, enemies.Count)] } : new List<UnitControl>();
-            case TargetType.SingleAlly:
-                return allies.Count > 0 ? new List<UnitControl> { allies[Random.Range(0, allies.Count)] } : new List<UnitControl>();
-            default: return new List<UnitControl>();
-        }
+        // possibleDecisions 중에서 무작위로 하나를 골라 반환합니다.
+        return possibleDecisions[Random.Range(0, possibleDecisions.Count)];
     }
 
 }

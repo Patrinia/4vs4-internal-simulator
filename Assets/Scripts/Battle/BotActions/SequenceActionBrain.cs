@@ -34,26 +34,28 @@ public class SequenceActionBrain : IUnitBrain
         if (!usableSkills.Contains(targetSkill))
         {
             // 패턴이 꼬이지 않게 차선책(첫 번째 사용 가능 스킬 또는 기본 공격)을 시전합니다.
-            return usableSkills[0];
+            targetSkill = usableSkills[0];
         }
 
-        List<UnitControl> targets = GetRandomValidTargets(targetSkill, allUnits);
+        List<ActionDecision> possibleDecisions = TargetingUtility.GetAllPossibleDecisions(targetSkill, myUnit, allUnits);
 
-        return new ActionDecision(targetSkill, targets);
+        if (possibleDecisions.Count == 0) return null;
+
+        return possibleDecisions[Random.Range(0, possibleDecisions.Count)];
     }
 
-    private List<UnitControl> GetRandomValidTargets(SkillData skill, List<UnitControl> allUnits)
-    {
-        List<UnitControl> enemies = allUnits.FindAll(u => !u.isDead && u.isPlayer != myUnit.isPlayer);
-        List<UnitControl> allies = allUnits.FindAll(u => !u.isDead && u.isPlayer == myUnit.isPlayer);
+    //private List<UnitControl> GetRandomValidTargets(SkillData skill, List<UnitControl> allUnits)
+    //{
+    //    List<UnitControl> enemies = allUnits.FindAll(u => !u.isDead && u.isPlayer != myUnit.isPlayer);
+    //    List<UnitControl> allies = allUnits.FindAll(u => !u.isDead && u.isPlayer == myUnit.isPlayer);
 
-        switch (skill.targetType)
-        {
-            case TargetType.Self: return new List<UnitControl> { myUnit };
-            case TargetType.AllEnemies: return enemies;
-            case TargetType.SingleEnemy:
-                return enemies.Count > 0 ? new List<UnitControl> { enemies[Random.Range(0, enemies.Count)] } : new List<UnitControl>();
-            default: return new List<UnitControl>();
-        }
-    }
+    //    switch (skill.targetType)
+    //    {
+    //        case TargetType.Self: return new List<UnitControl> { myUnit };
+    //        case TargetType.AllEnemies: return enemies;
+    //        case TargetType.SingleEnemy:
+    //            return enemies.Count > 0 ? new List<UnitControl> { enemies[Random.Range(0, enemies.Count)] } : new List<UnitControl>();
+    //        default: return new List<UnitControl>();
+    //    }
+    //}
 }

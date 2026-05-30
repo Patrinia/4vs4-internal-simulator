@@ -28,8 +28,14 @@ public class SkillData : ScriptableObject
     public int maxPower;
 
     [Header("3. AI 의사결정 및 시스템 분류 (엑셀 연동)")]
-    [Tooltip("이 스킬이 누구를 타겟으로 하는지 정의 (예: 단일 적군)")]
+    [Tooltip("이 스킬이 누구를 타겟으로 하는지 정의 (예: Enemy, Ally)")]
     public TargetType targetType;
+    [Tooltip("스킬이 타격할 수 있는 최대 타겟 수")]
+    public int maxTargetCount;
+    [Tooltip("메인 타겟 인덱스 기준 서브 타겟의 상대적 위치 (예: -1, 1)")]
+    public List<int> subTargetOffsets = new List<int>();
+    [Tooltip("서브 타겟에게 적용될 위력의 배율 (예: 0.5)")]
+    public float subTargetDamageRatio;
     [Tooltip("가상 플레이어(Bot)가 자신의 페르소나에 맞춰 스킬의 점수를 매길 때 참고하는 복합 성향 태그")]
     public List<TendencyType> skillTendencies = new List<TendencyType>();
 
@@ -38,7 +44,6 @@ public class SkillData : ScriptableObject
     public List<AttributeModifier> attributeModifiers = new List<AttributeModifier>();
 
     [Header("5. 시각/청각 에셋 및 복합 효과 (유니티 에디터 수동 할당)")]
-
     [Tooltip("스킬 버튼에 표시될 아이콘 이미지")]
     public Sprite skillIcon;
     [Tooltip("스킬 사용 시 씬에 생성될 화려한 파티클/이펙트 프리팹")]
