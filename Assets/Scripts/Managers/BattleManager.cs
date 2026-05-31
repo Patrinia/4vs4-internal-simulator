@@ -1,10 +1,11 @@
-﻿using System.Collections;
+﻿using System; // Action 이벤트를 사용하기 위해 추가
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
 // ====================================================
-// [BattleManager.cs] (구 RoundManager)
+// [BattleManager.cs] 
 // 전투의 시작, 턴 라이프사이클, 진형 관리, 그리고 최종 승패를
 // 총괄하는 게임의 오케스트라 지휘자(Orchestrator) 클래스입니다.
 // ====================================================
@@ -17,13 +18,16 @@ public class BattleManager : MonoBehaviour
     private CombatResolver combatResolver;
     private StatusEffectManager statusManager;
 
-    // [업데이트] 1차원 진형 체스판을 관리하는 매니저 신규 추가
+    // 1차원 진형 체스판을 관리하는 매니저
     public FormationManager FormationManager { get; private set; }
 
     [Header("전투 데이터")]
     public List<UnitControl> allUnits = new List<UnitControl>(); // 전투에 참여하는 모든 유닛 리스트
     private Queue<UnitControl> turnQueue = new Queue<UnitControl>(); // 이번 라운드의 턴 대기열
     private int currentRound = 0; // 현재 라운드 수
+
+    // [업데이트] 전투가 완전히 종료되었을 때 외부(SimulationManager 등)에 알리는 방송국(이벤트)
+    public event Action OnBattleEnded;
 
     private void Awake()
     {
@@ -35,20 +39,34 @@ public class BattleManager : MonoBehaviour
         combatResolver = new CombatResolver();
         statusManager = new StatusEffectManager();
 
-        // 진형 관리자 생성 (아직 유닛 배치는 안 된 상태)
+        // 진형 관리자 생성
         FormationManager = new FormationManager();
     }
 
-    private void Start()
+    // [업데이트] 기존의 Start() 내부 자동 실행 로직을 제거했습니다. 
+    // 이제 BattleManager는 스스로 전투를 시작하지 않습니다. (수동 점화 대기)
+
+    /// <summary>
+    /// [신규 추가] 외부 매니저(SimulationManager, GameFlowManager)가 호출하는 수동 점화 스위치입니다.
+    /// </summary>
+    /// <param name="participatingUnits">SpawnManager가 세팅을 마친 이번 전투의 참여 유닛 전체 리스트</param>
+    public void StartBattle(List<UnitControl> participatingUnits)
     {
-        // 전투 시작 전 유닛들을 물리적 체스판(진형)에 배치합니다.
+        // 1. 전투 데이터 초기화
+        allUnits = new List<UnitControl>(participatingUnits);
+        currentRound = 0;
+        turnQueue.Clear();
+
+        // 2. 진형 배치 및 전투 시작 전역 기믹 발동
         InitializeBattlefield();
+        statusManager.OnBattleStart(allUnits); // 최초 1회 발동
+
+        Debug.Log("<color=green><b>[BattleManager]</b> 외부 명령으로 엔진 점화! 전투를 시작합니다.</color>");
+
+        // 3. 코어 루프 가동
         StartCoroutine(BattleLoop());
     }
 
-    /// <summary>
-    /// [신규 추가] 전투 진입 시, 모든 유닛을 아군과 적군으로 나누어 진형 슬롯(0~3번)에 배치합니다.
-    /// </summary>
     private void InitializeBattlefield()
     {
         List<UnitControl> players = allUnits.Where(u => u.isPlayer).ToList();
@@ -92,25 +110,27 @@ public class BattleManager : MonoBehaviour
             yield return new WaitForSeconds(1.0f);
         }
 
-        Debug.Log("전투가 완전히 종료되었습니다.");
+        Debug.Log("<color=red><b>[BattleManager] 전투가 완전히 종료되었습니다. 결과를 집계하고 방송을 송출합니다.</b></color>");
+
+        // [업데이트] 전투 최종 종료 시점 이벤트 발동 (승패 정산용)
+        statusManager.OnBattleEnd(allUnits);
+
+        // [업데이트] 상위 매니저들에게 전투가 끝났음을 알림 (옵저버 패턴)
+        OnBattleEnded?.Invoke();
     }
 
     private IEnumerator ProcessTurn(UnitControl unit)
     {
         Debug.Log($"[{unit.unitName}] 턴 시작.");
 
-        // 2-2. 턴 시작 시점 이벤트 발동
         statusManager.OnTurnStart(unit);
 
-        // 2-3. 행동 가능 상태 검사
         if (unit.IsUnableToAct())
         {
             Debug.Log($"[{unit.unitName}] 행동 불가 상태입니다. 턴을 건너뜁니다.");
-            // 행동을 건너뛰고 곧바로 정산 단계로 이동
         }
         else
         {
-            // 2-4. 행동 실행
             if (unit.IsForcedToActRandomly())
             {
                 yield return StartCoroutine(ExecuteRandomAction(unit));
@@ -125,13 +145,8 @@ public class BattleManager : MonoBehaviour
             }
         }
 
-        // 2-5. 행동 결과 정산 및 사망자 체크
         combatResolver.ResolveCombatResults(allUnits);
-
-        // 2-6. 턴 종료 시점 이벤트 발동
         statusManager.OnTurnEnd(unit);
-
-        // [업데이트] 턴이 종료될 때 해당 유닛의 모든 스킬 쿨타임을 1씩 감소시킵니다.
         unit.DecreaseCooldowns();
 
         Debug.Log($"[{unit.unitName}] 턴 종료.");
@@ -142,51 +157,39 @@ public class BattleManager : MonoBehaviour
     // ========================================================================
     private IEnumerator WaitForPlayerAction(UnitControl unit)
     {
-        // TODO: UI에서 플레이어가 스킬을 선택할 때까지 대기하는 로직이 들어갑니다.
         Debug.Log("플레이어의 조작(입력)을 대기 중입니다...");
         yield return new WaitForSeconds(1.0f);
     }
 
-    /// <summary>
-    /// [1순위 작업 완료] 5단계 전술 파이프라인을 관장하는 AI 실행부입니다.
-    /// </summary>
     private IEnumerator ExecuteAIAction(UnitControl unit)
     {
         Debug.Log($"{unit.unitName} (AI)가 전황을 분석 중입니다...");
-        yield return new WaitForSeconds(0.6f); // 봇이 고민하는 듯한 시각적 딜레이
+        yield return new WaitForSeconds(0.6f);
 
-        // 1단계: 쿨타임 검사 필터링 (사용 가능한 스킬 추려내기)
         List<SkillData> usableSkills = new List<SkillData>();
         foreach (SkillData skill in unit.equippedSkills)
         {
             if (unit.GetCooldown(skill) == 0) usableSkills.Add(skill);
         }
 
-        // 안전장치
         if (unit.Brain == null || usableSkills.Count == 0)
         {
             Debug.Log($"[{unit.unitName}] 행동 불가: 사용 가능한 스킬이 없거나 두뇌가 없습니다.");
             yield break;
         }
 
-        // 2단계: 최신 진형 주입 및 두뇌 의사결정 요청
         ActionDecision decision = unit.Brain.SelectNextSkill(usableSkills, allUnits, FormationManager);
 
-        // 3단계: 의사결정 검증 (Bypass 체크)
         if (decision == null || decision.SelectedSkill == null || decision.MainTarget == null)
         {
             Debug.Log($"[{unit.unitName}] 판단 결과: 현재 상황에 유리한 행동이 없어 방어 태세를 취합니다 (턴 스킵).");
-            yield break; // 코루틴을 종료하고 즉시 턴 정산으로 넘어감
+            yield break;
         }
 
-        // 4단계: 심판관 호출 및 실집행
         Debug.Log($"<color=yellow>[{unit.unitName}] (이)가 [{decision.SelectedSkill.skillName}] 스킬을 시전!</color>");
-        yield return new WaitForSeconds(0.5f); // 스킬 시전 애니메이션 딜레이 연출
+        yield return new WaitForSeconds(0.5f);
 
-        // 결재 서류를 그대로 넘겨주어 메인 타겟과 서브 타겟을 처리하게 합니다.
         combatResolver.ExecuteAction(unit, decision);
-
-        // 5단계: 사용한 스킬에 고유 쿨타임 적용
         unit.SetCooldown(decision.SelectedSkill, decision.SelectedSkill.maxCooldown);
     }
 

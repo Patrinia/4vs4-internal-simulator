@@ -23,7 +23,7 @@ public enum TendencyType
     Aggressive = 1,     // 공격 위주 (데미지)
     Defensive = 2,      // 방어 위주 (보호막, 버프)
     Heal = 3,           // 치유 위주 (HP 회복)
-    Utility = 4         // 게이지 조작, 진형 파괴 등 유틸리티 위주
+    Utility = 4,         // 게이지 조작, 진형 파괴 등 유틸리티 위주
     DebuffToEnemy = 5,  // 출혈, 화상, 스턴 등 적에게 거는 디버프 위주
     BuffToAlly = 6      // 공격력/방어력/속도 증가 등 소속 팀원에게 거는 버프
 }
