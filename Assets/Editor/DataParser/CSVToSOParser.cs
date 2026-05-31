@@ -93,7 +93,9 @@ public class CSVToSOParser : EditorWindow
             }
 
             skillData.category = (SkillCategory)Enum.Parse(typeof(SkillCategory), columns[3]);
+
             skillData.targetType = (TargetType)Enum.Parse(typeof(TargetType), columns[4]);
+
             skillData.maxTargetCount = int.Parse(columns[5]);
 
             // 서브 타겟 오프셋 파싱 (예: -1;+1)

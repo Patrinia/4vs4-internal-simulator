@@ -23,7 +23,10 @@ MonoBehaviour:
     baseValue: 30
   - type: 2
     baseValue: 10
-  skillPool:
+  normalSkillPool:
   - {fileID: 11400000, guid: 265aa45b536fde74b82db7f7983f8300, type: 2}
+  movementSkill: {fileID: 0}
+  ultimateSkillPool: []
+  defaultAIBrainType: 2
   unitPrefab: {fileID: 0}
   unitPortrait: {fileID: 0}

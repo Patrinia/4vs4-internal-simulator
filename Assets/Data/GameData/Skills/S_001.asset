@@ -20,6 +20,9 @@ MonoBehaviour:
   minPower: 25
   maxPower: 40
   targetType: 1
+  maxTargetCount: 1
+  subTargetOffsets: 
+  subTargetDamageRatio: 0
   skillTendencies: 01000000
   attributeModifiers:
   - type: 1

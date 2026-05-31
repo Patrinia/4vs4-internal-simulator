@@ -20,21 +20,10 @@ public enum AttributeType
 public enum TendencyType
 {
     None = 0,
-    Aggressive = 1,   // 공격 위주 (데미지)
-    Defensive = 2,    // 방어 위주 (보호막, 버프)
-    Heal = 3,         // 치유 위주 (HP 회복)
-    Control = 4,      // 턴 스킵, 기절 등 제어 위주
-    Utility = 5       // 게이지 조작, 진형 파괴 등 유틸리티 위주
-}
-
-/// <summary>
-/// 기획자가 엑셀에서 지정할 유닛의 두뇌(지능) 타입입니다.
-/// </summary>
-public enum AIBrainType
-{
-    None = 0,
-    Player = 1,      // 플레이어 조작 (HumanBrain - UI 입력 대기)
-    Random = 2,      // 무작위 행동 (RandomActionBrain)
-    Sequence = 3,    // 순차적 행동 (SequenceActionBrain)
-    Strategic = 4    // 전황 분석 행동 (StrategicActionBrain - 보스급 지능)
+    Aggressive = 1,     // 공격 위주 (데미지)
+    Defensive = 2,      // 방어 위주 (보호막, 버프)
+    Heal = 3,           // 치유 위주 (HP 회복)
+    Utility = 4         // 게이지 조작, 진형 파괴 등 유틸리티 위주
+    DebuffToEnemy = 5,  // 출혈, 화상, 스턴 등 적에게 거는 디버프 위주
+    BuffToAlly = 6      // 공격력/방어력/속도 증가 등 소속 팀원에게 거는 버프
 }

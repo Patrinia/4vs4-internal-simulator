@@ -19,7 +19,10 @@ MonoBehaviour:
   maxCooldown: 3
   minPower: 30
   maxPower: 50
-  targetType: 3
+  targetType: 2
+  maxTargetCount: 1
+  subTargetOffsets: 
+  subTargetDamageRatio: 0
   skillTendencies: 0300000002000000
   attributeModifiers:
   - type: 2
