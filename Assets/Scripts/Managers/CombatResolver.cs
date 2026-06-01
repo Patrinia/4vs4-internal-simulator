@@ -5,6 +5,10 @@ using UnityEngine;
 // 전투 결과 정산 및 사망 처리 전문가
 public class CombatResolver
 {
+    // StatusEffectManager에 대한 의존성 주입 (팩토리 기능 사용)
+    private StatusEffectManager effectManager;
+
+
     // ActionDecision을 통째로 받아 메인(100%)과 서브(배율)를 분리하여 연산합니다.
     public void ExecuteAction(UnitControl caster, ActionDecision decision)
     {
@@ -12,27 +16,41 @@ public class CombatResolver
 
         SkillData skill = decision.SelectedSkill;
 
-        // 1. 위력 난수 굴림 (최소 ~ 최대 범위)
-        // 주의: Random.Range(int, int)에서 최댓값은 포함되지 않으므로 +1을 해줍니다.
-        int baseValue = Random.Range(skill.minPower, skill.maxPower + 1);
+        // [업데이트] 1. 데미지 또는 힐량 판별 및 위력 굴림
+        bool isHealSkill = skill.skillTendencies.Contains(TendencyType.Heal);
+        int baseValue = 0;
+
+        if (isHealSkill)
+            baseValue = Random.Range(skill.minHeal, skill.maxHeal + 1);
+        else
+            baseValue = Random.Range(skill.minDamage, skill.maxDamage + 1);
 
         // 2. 버프/디버프 연산 (기믹 파이프라인)
-        // TODO: 향후 StatusEffectManager에서 현재 걸려있는 공격력/방어력 버프 수치를 가져와 곱합니다.
-        float buffMultiplier = 1.0f;   // 예: 시전자의 공격력 증가
-        float debuffMultiplier = 1.0f; // 예: 피격자의 방어력 증가
+        // [업데이트] StatusEffectManager를 통해 실제 버프 수치를 가져옵니다.
+        float buffMultiplier = effectManager.GetAttackMultiplier(caster);
+        float debuffMultiplier = effectManager.GetDefenseMultiplier(decision.MainTarget);
 
-        // 기본 위력 확정
-        int finalMainValue = Mathf.RoundToInt(baseValue * buffMultiplier * debuffMultiplier);
+        // 힐 스킬일 경우 디버프(방어력) 계산을 무시하고, 데미지일 경우만 적용
+        int finalMainValue = isHealSkill ?
+                             Mathf.RoundToInt(baseValue * buffMultiplier) :
+                             Mathf.RoundToInt(baseValue * buffMultiplier * debuffMultiplier);
 
         // 3. 메인 타겟 데미지/회복 적용 (100%)
         ApplyEffectToTarget(caster, decision.MainTarget, skill, finalMainValue, "메인 타겟");
 
-        // 4. 서브 타겟 데미지/회복 적용 (subTargetDamageRatio 배율 적용)
+        // 4. 서브 타겟 적용 (개별 방어력 연산 적용)
         if (decision.SubTargets.Count > 0 && skill.subTargetDamageRatio > 0f)
         {
-            int finalSubValue = Mathf.RoundToInt(finalMainValue * skill.subTargetDamageRatio);
             foreach (var sub in decision.SubTargets)
             {
+                // 서브 타겟 본인만의 방어력/디버프 배율을 새로 가져옵니다.
+                float subDebuffMultiplier = effectManager.GetDefenseMultiplier(sub);
+
+                // 순수 위력(baseValue) * 시전자 공업 * 서브타겟 방업 * 서브타겟 배율(0.5 등)
+                int finalSubValue = isHealSkill ?
+                                    Mathf.RoundToInt(baseValue * buffMultiplier * skill.subTargetDamageRatio) :
+                                    Mathf.RoundToInt(baseValue * buffMultiplier * subDebuffMultiplier * skill.subTargetDamageRatio);
+
                 ApplyEffectToTarget(caster, sub, skill, finalSubValue, "서브 타겟");
             }
         }
@@ -53,6 +71,12 @@ public class CombatResolver
             target.TakeDamage(value);
             Debug.Log($"<color=red>[{caster.unitName}]가 [{target.unitName}]({targetTypeStr})에게 {value}의 데미지를 입혔습니다!</color>");
         }
+
+        // 5. 데미지/힐 적용 후, 스킬에 담긴 부가 효과(상태이상, 게이지 변동) 처리
+        if (effectManager != null)
+        {
+            effectManager.ApplySkillEffects(caster, target, skill);
+        }
     }
 
     /// <summary>
@@ -63,8 +87,12 @@ public class CombatResolver
     {
         if (attacker == null || target == null || skill == null) return 0;
 
+        // 데미지 스킬인지 힐 스킬인지 판단하여 예측
+        // 데미지 예측이므로 힐은 0 반환
+        if (skill.skillTendencies.Contains(TendencyType.Heal)) return 0;
+
         // 1. 스킬의 순수 평균 위력 계산
-        int averageBasePower = (skill.minPower + skill.maxPower) / 2;
+        int averageBasePower = (skill.minDamage + skill.maxDamage) / 2;
 
         // (향후 이곳에 attacker의 버프 상태나 음/양 충만 상태에 따른 데미지 증폭 연산이 추가될 수 있습니다.)
         int predictedDamage = averageBasePower;

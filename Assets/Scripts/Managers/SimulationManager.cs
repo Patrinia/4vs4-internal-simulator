@@ -5,7 +5,7 @@ using System.Linq;
 
 // ====================================================
 // [SimulationManager.cs]
-// 시뮬레이션 씬(Sim_Scene)의 시간(배속)과 반복 횟수를 지배하는 최고 관리자입니다.
+// 시뮬레이션 씬(Simulation)의 시간(배속)과 반복 횟수를 지배하는 최고 관리자입니다.
 // BattleManager를 부품으로 사용하여 수만 번의 전투를 자동화합니다.
 // ====================================================
 public class SimulationManager : MonoBehaviour
@@ -120,12 +120,15 @@ public class SimulationManager : MonoBehaviour
         {
             isCurrentBattleFinished = false;
 
-            // 1. 유닛 세팅 및 초기화 (추후 만들어질 SpawnManager에게 위임)
-            // List<UnitControl> unitsForThisBattle = SpawnManager.Instance.SetupUnitsForSimulation();
+            // 1. 유닛 세팅 및 초기화 (임시 하드코딩 제거 및 매니저 체인 연동)
+            // 매 시뮬레이션 루프마다 장부의 체력을 100%로 갱신하여 독립된 평행 우주를 만듭니다.
+            PartyRoster.Instance.ResetAllHP();
 
-            // [임시 방어 코드] SpawnManager가 아직 없으므로, BattleManager에 하드코딩된 리스트를 재사용합니다.
-            // (실제로는 여기서 체력을 100%로 꽉 채운 건강한 8명의 유닛 리스트를 받아와야 합니다.)
-            List<UnitControl> unitsForThisBattle = BattleManager.Instance.allUnits;
+            // SpawnManager에게 아군/적군 명단을 넘겨주고, 스킬과 뇌가 장착된 8명의 육체를 받아옵니다.
+            List<UnitControl> unitsForThisBattle = SpawnManager.Instance.SetupUnitsForSimulation(
+                PartyRoster.Instance.playerParty,
+                PartyRoster.Instance.enemyParty
+            );
 
             // 2. 엔진 점화!
             BattleManager.Instance.StartBattle(unitsForThisBattle);

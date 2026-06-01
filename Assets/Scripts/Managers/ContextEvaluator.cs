@@ -7,7 +7,6 @@ using UnityEngine;
 // 스킬의 타겟수(단일 타겟인지 광역기인지)를 모두 고려하여
 // 특정 스킬이 현재 얼마나 절박하게 필요한지(특정 스킬의 최종 가치를)
 // '상황 배수(Context Multiplier)'로 산출합니다.
-
 // '평균 가치 + 광역 보너스' 산식으로 산출하는 전황 분석기입니다.
 // ====================================================
 public class ContextEvaluator
@@ -117,9 +116,12 @@ public class ContextEvaluator
         // 사망한 유닛이거나 아군이면 타겟팅 계산에서 제외
         if (target.isDead || target.isPlayer == caster.isPlayer) return 0f;
 
-        // CombatResolver의 가상 예측 데미지 호출 (추후 구현 예정)
-        // int predictedDamage = CombatResolver.PredictDamage(caster, target, skill);
-        int predictedDamage = skill.maxPower; // 현재는 최대 데미지로 가상 치환
+        // [업데이트] 컴파일 에러 해결 및 로직 정상화 구간
+        // CombatResolver의 가상 예측 데미지 호출 (PredictDamage가 이제 정상 작동합니다)
+        int predictedDamage = CombatResolver.PredictDamage(caster, target, skill);
+
+        // (만약 PredictDamage 연동이 불안정하여 최대 데미지를 임시로 쓰고 싶다면 아래 주석을 풉니다)
+        // int predictedDamage = skill.maxDamage; 
 
         if (predictedDamage >= target.currentHP) return 1.0f; // 처형 가능 시 1점 가산
 

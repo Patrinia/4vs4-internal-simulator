@@ -1,3 +1,2 @@
-UnitID,UnitName,UnitRank,AIBrainType,MaxHP,MinSpeed,MaxSpeed,BaseAttributes,MoveSkill,UltiSkillPool,NormalSkillPool
-U_001,기사,5,1,120,4,8,YinYang:50,,,S_001;S_002
-U_002,꿈먹는 고블린,5,2,80,3,7,YinYang:30;Dream:10,,,S_001
+UnitID,UnitName,UnitRank,AIBrainType,MaxHP,MinSpeed,MaxSpeed,BaseAttributes,CorrisionImmune,MoveSkill,UltiSkillPool,NormalSkillPool
+

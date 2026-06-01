@@ -28,6 +28,7 @@ public struct AttributeModifier
 //이후 패시브 스킬도 추가 가능
 public enum SkillCategory
 {
-    Normal = 0,    // 일반 스킬
-    Ultimate = 1   // 필살기 (장착 1개 제한)
+    Normal = 0,         // 일반 스킬
+    Ultimate = 1,       // 필살기 (장착 1개 제한)
+    DefaultMove = 2     // 기본적으로 주어지는 이동 스킬(선택 불가, 유닛단위로 할당)
 }

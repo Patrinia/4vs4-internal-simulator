@@ -26,7 +26,7 @@ public class BattleManager : MonoBehaviour
     private Queue<UnitControl> turnQueue = new Queue<UnitControl>(); // 이번 라운드의 턴 대기열
     private int currentRound = 0; // 현재 라운드 수
 
-    // [업데이트] 전투가 완전히 종료되었을 때 외부(SimulationManager 등)에 알리는 방송국(이벤트)
+    // 전투가 완전히 종료되었을 때 외부(SimulationManager 등)에 알리는 방송국(이벤트)
     public event Action OnBattleEnded;
 
     private void Awake()
@@ -43,11 +43,11 @@ public class BattleManager : MonoBehaviour
         FormationManager = new FormationManager();
     }
 
-    // [업데이트] 기존의 Start() 내부 자동 실행 로직을 제거했습니다. 
+    // 기존의 Start() 내부 자동 실행 로직을 제거했습니다. 
     // 이제 BattleManager는 스스로 전투를 시작하지 않습니다. (수동 점화 대기)
 
     /// <summary>
-    /// [신규 추가] 외부 매니저(SimulationManager, GameFlowManager)가 호출하는 수동 점화 스위치입니다.
+    /// 외부 매니저(SimulationManager, GameFlowManager)가 호출하는 수동 점화 스위치입니다.
     /// </summary>
     /// <param name="participatingUnits">SpawnManager가 세팅을 마친 이번 전투의 참여 유닛 전체 리스트</param>
     public void StartBattle(List<UnitControl> participatingUnits)
@@ -112,10 +112,10 @@ public class BattleManager : MonoBehaviour
 
         Debug.Log("<color=red><b>[BattleManager] 전투가 완전히 종료되었습니다. 결과를 집계하고 방송을 송출합니다.</b></color>");
 
-        // [업데이트] 전투 최종 종료 시점 이벤트 발동 (승패 정산용)
+        // 전투 최종 종료 시점 이벤트 발동 (승패 정산용)
         statusManager.OnBattleEnd(allUnits);
 
-        // [업데이트] 상위 매니저들에게 전투가 끝났음을 알림 (옵저버 패턴)
+        // 상위 매니저들에게 전투가 끝났음을 알림 (옵저버 패턴)
         OnBattleEnded?.Invoke();
     }
 
@@ -137,6 +137,8 @@ public class BattleManager : MonoBehaviour
             }
             else if (unit.isPlayer)
             {
+                // 시뮬레이션에서는 유닛이 BotBrain을 가지므로 이 분기로 들어오지 않습니다.
+                // 본 게임에서만 PlayerBrain을 가진 유닛이 이 코드를 타게 됩니다.
                 yield return StartCoroutine(WaitForPlayerAction(unit));
             }
             else

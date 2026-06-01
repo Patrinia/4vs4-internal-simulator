@@ -1,3 +1,1 @@
-SKillID,SkillName,SkillTendencies,SkillCategory,TargetType,MaxTargetCount,SubTargetOffsets,SubTargetDamageRatio,MinPower,MaxPower,MaxCooldown,AttributeModifiers,Description
-S_001,강격,Aggressive,0,Enemy,1,,,25,40,2,YinYang:20,적 하나를 벱니다.
-S_002,치유,Heal;Defensive,0,Ally,1,,,30,50,3,Dream:-10,아군을 회복합니다.
+SkillID,SkillName,SkillCategory,SkillTendencies,TargetType,MaxTargetCount,SubTargetOffsets,SubTargetDamageRatio,MaxCooldown,MinDamage,MaxDamage,MinHeal,MaxHeal,StatusEffects,AttributeModifiers,Description

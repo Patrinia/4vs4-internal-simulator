@@ -5,7 +5,6 @@ using System.Collections.Generic;
 // [UnitControl.cs]
 // 전장에 스폰된 유닛 객체의 실시간 상태와 체력/속성 변수를 관리합니다.
 // ====================================================
-
 public class UnitControl : MonoBehaviour
 {
     [Header("원본 데이터 참조")]
@@ -27,28 +26,33 @@ public class UnitControl : MonoBehaviour
     public Dictionary<AttributeType, int> currentAttributes = new Dictionary<AttributeType, int>();
 
     [Header("장착된 스킬")]
-    // 전투 시작 전, skillPool에서 선택된 4개의 스킬
+    // 기획 룰 적용: 고정 이동기(1) + 필살기(최대 1) + 일반 스킬(최대 4) = 최대 6개 장착
     public List<SkillData> equippedSkills = new List<SkillData>();
 
-    // [업데이트] 의존성 역전을 위한 추상화된 뇌 (BattleManager가 접근할 수 있도록 프로퍼티로 변경)
+    // 의존성 역전을 위한 추상화된 뇌 (BattleManager가 접근할 수 있도록 프로퍼티로 변경)
     public IUnitBrain Brain { get; private set; }
 
-    // [업데이트] 실시간 쿨타임 추적 데이터베이스
+    // 실시간 쿨타임 추적 데이터베이스
     private Dictionary<SkillData, int> skillCooldowns = new Dictionary<SkillData, int>();
+
+    // 런타임에 유닛에게 부착된 살아있는 상태이상(버프/디버프) 객체들을 관리하는 리스트입니다.
+    public List<StatusEffectBase> activeEffects = new List<StatusEffectBase>();
 
     // ========================================================================
     // [1. 초기화 및 기본 로직]
     // ========================================================================
 
-    public void Init(UnitData data, bool isPlayerSide)
+    // [업데이트] 세션 데이터 분리 원칙에 따라 시작 체력(startingHP)을 외부에서 주입받습니다.
+    public void Init(UnitData data, int startingHP, bool isPlayerSide)
     {
         SourceData = data;
         isPlayer = isPlayerSide;
-        currentHP = data.maxHP;
+        currentHP = startingHP; // [업데이트] 스스로 maxHP로 채우지 않고 주입받은 체력 적용
         isDead = false;
 
         currentAttributes.Clear();
-        skillCooldowns.Clear(); // [업데이트] 쿨타임 초기화
+        skillCooldowns.Clear(); // 쿨타임 초기화
+        activeEffects.Clear();  // 초기화 시 상태이상 리스트도 비웁니다.
 
         if (data.baseAttributes != null)
         {
@@ -90,24 +94,9 @@ public class UnitControl : MonoBehaviour
         {
             int nextValue = currentAttributes[type] + amount;
 
-            // 음/양 속성일 경우 임계치 초과 검사
-            if (type == AttributeType.YinYang)
-            {
-                if (nextValue < 0 || nextValue > 100)
-                {
-                    Debug.Log($"<color=red><b>[{unitName}]</b>가 음양침식을 버티지 못하고 사망합니다!</color>");
-
-                    isCorrosioned = true; // 침식 연출용 플래그 On
-                    TakeDamage(SourceData.maxHP); // 최대 체력만큼 데미지를 주어 즉사 처리
-
-                    // 수치는 연출을 위해 극단값(0 또는 100)으로 고정해 둡니다.
-                    currentAttributes[type] = nextValue < 0 ? 0 : 100;
-                    return; // 연산 즉시 종료
-                }
-            }
-
-            // 임계치를 돌파하지 않았다면 정상적으로 한계치 내에서 증감(Clamp)
-            currentAttributes[type] = Mathf.Clamp(nextValue, 0, 100);
+            // [업데이트] 즉사 판정 및 강제 고정(Clamp) 로직을 완전히 제거하여, 
+            // 턴 시작 전까지 초과/미달 수치를 그대로 유지(세이브 플레이 허용)하도록 해방합니다.
+            currentAttributes[type] = nextValue;
         }
     }
 
@@ -120,7 +109,13 @@ public class UnitControl : MonoBehaviour
             if (yinYangValue <= 10) return true;
         }
 
-        // TODO: 향후 기절(Stun) 등의 상태이상 검사도 이곳에 추가됩니다.
+        // 기절(Stun) 상태이상 체크 로직 추가
+        foreach (var effect in activeEffects)
+        {
+            if (effect.type == EffectType.Stun && !effect.isExpired)
+                return true;
+        }
+
         return false;
     }
 

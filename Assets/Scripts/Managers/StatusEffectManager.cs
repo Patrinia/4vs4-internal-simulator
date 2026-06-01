@@ -8,6 +8,80 @@ using UnityEngine;
 // ====================================================
 public class StatusEffectManager
 {
+    // ========================================================================
+    // [팩토리 및 데이터 적용부]
+    // ========================================================================
+
+    /// <summary>
+    /// 스킬 적중 시 CombatResolver가 호출합니다. 속성 변동과 상태이상을 타겟에게 부여합니다.
+    /// </summary>
+    public void ApplySkillEffects(UnitControl caster, UnitControl target, SkillData skill)
+    {
+        // 1. 속성 조작 (게이지 증감)
+        foreach (var mod in skill.attributeModifiers)
+        {
+            target.ModifyAttribute(mod.type, mod.amount);
+            Debug.Log($"<color=cyan>[기믹] {target.unitName}의 {mod.type} 속성이 {mod.amount}만큼 변화했습니다.</color>");
+        }
+
+        // 2. 상태이상 팩토리 (정적 데이터를 동적 객체로)
+        foreach (var effectData in skill.statusEffects)
+        {
+            StatusEffectBase newEffect = CreateEffectInstance(effectData.type);
+            if (newEffect != null)
+            {
+                newEffect.Init(caster, target, effectData);
+                target.activeEffects.Add(newEffect);
+                Debug.Log($"<color=magenta>[상태이상] {target.unitName}에게 {effectData.type}(위력:{effectData.value}) 부여됨!</color>");
+            }
+        }
+    }
+
+    /// <summary>
+    /// EffectType에 따라 알맞은 자식 클래스 인스턴스를 생성하는 팩토리 메서드
+    /// </summary>
+    private StatusEffectBase CreateEffectInstance(EffectType type)
+    {
+        switch (type)
+        {
+            // (추후 구체적인 클래스들이 작성되면 이곳에 case가 추가됩니다.)
+            case EffectType.AtkUp: return new DurationEffectTemplate();
+            case EffectType.DefDown: return new DurationEffectTemplate();
+            case EffectType.Stun: return new DurationEffectTemplate();
+            case EffectType.Burn: return new StackEffectTemplate();
+            case EffectType.Bleed: return new StackEffectTemplate();
+            default: return null;
+        }
+    }
+
+    // ========================================================================
+    // [전투 연산 헬퍼]
+    // ========================================================================
+
+    public float GetAttackMultiplier(UnitControl unit)
+    {
+        float multiplier = 1.0f;
+        foreach (var effect in unit.activeEffects)
+        {
+            // AtkUp은 위력(value) 퍼센트만큼 데미지를 증가시킴 (예: 20 -> 1.2배)
+            if (effect.type == EffectType.AtkUp && !effect.isExpired)
+                multiplier += (effect.value * 0.01f);
+        }
+        return multiplier;
+    }
+
+    public float GetDefenseMultiplier(UnitControl unit)
+    {
+        float multiplier = 1.0f;
+        foreach (var effect in unit.activeEffects)
+        {
+            // DefDown은 대상이 받는 데미지를 증가시킴 (배율)
+            if (effect.type == EffectType.DefDown && !effect.isExpired)
+                multiplier += (effect.value * 0.01f);
+        }
+        return multiplier;
+    }
+
     /// <summary>
     /// 1단계: 전투 진입 시 최초 1회 발동
     /// </summary>
@@ -75,4 +149,31 @@ public class StatusEffectManager
     {
         /* 전투 결과 데이터 저장 트리거 및 승리/패배 상태 정산 */
     }
+
+    /// <summary>
+    /// 리스트 순회 중 아이템 소멸(Remove) 에러를 방지하기 위해 역순으로 검사하고, 
+    /// 액션(콜백)을 실행한 후 만료된 객체를 청소하는 안전한 헬퍼 함수
+    /// </summary>
+    private void ProcessEffects(UnitControl unit, System.Action<StatusEffectBase> action)
+    {
+        for (int i = unit.activeEffects.Count - 1; i >= 0; i--)
+        {
+            var effect = unit.activeEffects[i];
+            action?.Invoke(effect); // 생명주기 함수 실행
+
+            if (effect.isExpired)
+            {
+                unit.activeEffects.RemoveAt(i);
+                Debug.Log($"<color=grey>[해제] {unit.unitName}의 {effect.type} 상태가 해제되었습니다.</color>");
+            }
+        }
+    }
+
 }
+
+// ========================================================================
+// [상태이상 객체 템플릿]
+// (임시로 생성된 클래스들이며, 추후 각자 독립된 로직을 가질 수 있습니다)
+// ========================================================================
+public class DurationEffectTemplate : DurationEffect { }
+public class StackEffectTemplate : StackEffect { }

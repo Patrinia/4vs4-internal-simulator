@@ -18,6 +18,9 @@ public class UnitData : ScriptableObject
     // 유닛이 가질 수 있는 복수 속성과 전투 시작 시의 초기 수치
     public List<UnitAttribute> baseAttributes = new List<UnitAttribute>();
 
+    // 엑셀에서 TRUE/FALSE로 파싱될 침식 특수 사망 면역 여부
+    public bool isImmuneToCorrosion;
+
     [Header("스킬 시스템 풀 (엑셀 연동)")]
     // 이 캐릭터가 소유하고 배울 수 있는 스킬 목록이 3가지 종류로 세분화되었습니다.
 

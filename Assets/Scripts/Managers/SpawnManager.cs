@@ -91,14 +91,16 @@ public class SpawnManager : MonoBehaviour
         // [핵심 리셋 로직] 전투 시작 전 육체와 뇌를 완벽하게 초기화
         // ==========================================================
 
-        // 1. 체력 100% 회복, 쿨타임 초기화, 사망(isDead) 플래그 해제
-        unit.Init(data, isPlayer);
+        // [업데이트] 1. 장부(PartyRoster)에서 세션 체력을 조회하여 주입하고, 쿨타임 초기화 및 사망(isDead) 플래그 해제
+        int startingHP = PartyRoster.Instance.GetUnitHP(data);
+        unit.Init(data, startingHP, isPlayer);
 
-        // 2. TODO: 임시 스킬 장착 (추후 PartySettingManager에서 넘겨준 스킬로 교체 예정)
+        // [업데이트] 2. 임시 하드코딩 삭제 -> PartyRoster 장부에서 배정된 스킬을 꺼내어 장착
         unit.equippedSkills.Clear();
-        for (int j = 0; j < Mathf.Min(4, data.normalSkillPool.Count); j++)
+        List<SkillData> assignedSkills = PartyRoster.Instance.GetEquippedSkills(data);
+        if (assignedSkills != null)
         {
-            unit.equippedSkills.Add(data.normalSkillPool[j]);
+            unit.equippedSkills.AddRange(assignedSkills);
         }
 
         // 3. 뇌(Brain) 새로 장착 (기존의 오염된 기억을 날리고 팩토리에서 새 뇌를 발급)
