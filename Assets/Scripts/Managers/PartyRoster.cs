@@ -1,6 +1,18 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using System.Linq; // Take() 메서드 사용을 위함
+using System.Linq;
+
+// ====================================================
+// [CurrentPartyState]
+// 전투 간 인계될 유닛의 실시간 생존 및 속성 게이지 상태를 보관하는 구조체입니다.
+// ====================================================
+[System.Serializable]
+public struct CurrentPartyState
+{
+    public int currentHP;
+    public int yinYangValue;
+    public int dreamValue;
+}
 
 // ====================================================
 // [PartyRoster.cs]
@@ -18,8 +30,8 @@ public class PartyRoster : MonoBehaviour
     // 특정 유닛 데이터(Key)가 장착하기로 한 스킬 리스트(Value)를 저장하는 장부
     private Dictionary<UnitData, List<SkillData>> equippedSkillsDictionary = new Dictionary<UnitData, List<SkillData>>();
 
-    // [업데이트] 세션(탐색) 동안 유지되어야 할 유닛의 현재 체력을 보관하는 장부 (세션 데이터 분리)
-    private Dictionary<UnitData, int> rosterHP = new Dictionary<UnitData, int>();
+    // 세션(탐색) 동안 유지되어야 할 유닛의 현재 상태 전반을 보관하는 장부
+    private Dictionary<UnitData, CurrentPartyState> rosterStates = new Dictionary<UnitData, CurrentPartyState>();
 
     private void Awake()
     {
@@ -81,45 +93,70 @@ public class PartyRoster : MonoBehaviour
     }
 
     // ========================================================================
-    // [세션 데이터 (HP) 관리 API (신규)]
+    // [세션 데이터 관리 API (업데이트)]
     // ========================================================================
 
     /// <summary>
-    /// 시뮬레이션 시작 또는 새로운 탐색(밤 정비 완료 후) 시 모든 유닛의 체력을 Max로 초기화합니다.
+    /// 시뮬레이션 시작 또는 새로운 탐색(밤 정비 완료 후) 시 모든 유닛의 상태를 초기화합니다.
+    /// 기본값은 MaxHP, 음양 기준점(50), 꿈 게이지 기본값(0)으로 정돈됩니다.
     /// </summary>
-    public void ResetAllHP()
+    public void ResetAllStates()
     {
-        rosterHP.Clear();
+        rosterStates.Clear();
         foreach (var unit in playerParty)
         {
-            if (unit != null) rosterHP[unit] = unit.maxHP;
+            if (unit != null)
+            {
+                rosterStates[unit] = new CurrentPartyState
+                {
+                    currentHP = unit.maxHP,
+                    yinYangValue = 50,
+                    dreamValue = 0
+                };
+            }
         }
         foreach (var unit in enemyParty)
         {
-            if (unit != null) rosterHP[unit] = unit.maxHP;
+            if (unit != null)
+            {
+                rosterStates[unit] = new CurrentPartyState
+                {
+                    currentHP = unit.maxHP,
+                    yinYangValue = 50,
+                    dreamValue = 0
+                };
+            }
         }
-        Debug.Log("<color=green>[PartyRoster] 모든 출전 유닛의 체력 장부가 MaxHP로 리셋되었습니다.</color>");
+        Debug.Log("<color=green>[PartyRoster] 모든 출전 유닛의 연전 계승 상태 장부가 초기값으로 리셋되었습니다.</color>");
     }
 
     /// <summary>
-    /// 전투 종료 시 살아남은 유닛의 체력을 장부에 저장(덮어쓰기)하여 연전 시 유지되도록 합니다.
+    /// 전투 종료 시 살아남은 유닛의 누적 상태(HP 및 속성 게이지)를 장부에 저장(덮어쓰기)합니다.
     /// </summary>
-    public void UpdateUnitHP(UnitData unit, int currentHP)
+    public void UpdateUnitState(UnitData unit, CurrentPartyState currentState)
     {
-        if (unit != null) rosterHP[unit] = currentHP;
+        if (unit != null) rosterStates[unit] = currentState;
     }
 
     /// <summary>
-    /// SpawnManager가 육체를 스폰할 때 해당 유닛의 남은 체력을 조회합니다.
+    /// SpawnManager가 육체를 스폰할 때 해당 유닛의 가변 상태 기록을 조회합니다.
     /// </summary>
-    public int GetUnitHP(UnitData unit)
+    public CurrentPartyState GetUnitState(UnitData unit)
     {
-        if (unit != null && rosterHP.TryGetValue(unit, out int hp))
+        if (unit != null && rosterStates.TryGetValue(unit, out CurrentPartyState state))
         {
-            return hp;
+            return state;
         }
-        // 장부에 기록이 없으면 기본적으로 해당 유닛의 최대 체력을 반환합니다.
-        return unit != null ? unit.maxHP : 0;
+
+        // 장부에 기록이 없으면 기본 정적 데이터를 기반으로 안전하게 초기 상태를 생성하여 반환합니다.
+        CurrentPartyState defaultState = new CurrentPartyState();
+        if (unit != null)
+        {
+            defaultState.currentHP = unit.maxHP;
+            defaultState.yinYangValue = 50;
+            defaultState.dreamValue = 0;
+        }
+        return defaultState;
     }
 
     // ========================================================================

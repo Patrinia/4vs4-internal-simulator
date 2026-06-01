@@ -27,12 +27,33 @@ public class StatusEffectManager
         // 2. 상태이상 팩토리 (정적 데이터를 동적 객체로)
         foreach (var effectData in skill.statusEffects)
         {
-            StatusEffectBase newEffect = CreateEffectInstance(effectData.type);
-            if (newEffect != null)
+            // 동일한 상태이상이 이미 유닛에게 존재하고 유효한지 검사 (중첩 병합 처리)
+            StatusEffectBase existingEffect = target.activeEffects.Find(e => e.type == effectData.type && !e.isExpired);
+
+            if (existingEffect != null)
             {
-                newEffect.Init(caster, target, effectData);
-                target.activeEffects.Add(newEffect);
-                Debug.Log($"<color=magenta>[상태이상] {target.unitName}에게 {effectData.type}(위력:{effectData.value}) 부여됨!</color>");
+                // 타입별 사칙연산 병합 룰 적용
+                if (existingEffect is DurationEffect)
+                {
+                    existingEffect.value += effectData.value;        // 기간제: 위력(개수) 합산
+                    existingEffect.duration += effectData.duration;  // 기간제: 지속시간 합산
+                }
+                else if (existingEffect is StackEffect)
+                {
+                    existingEffect.value += effectData.value;        // 스택제: 오직 위력(개수)만 합산
+                }
+                Debug.Log($"<color=magenta>[상태이상 중첩] {target.unitName}의 {effectData.type} 중첩 병합! (총 위력:{existingEffect.value}, 지속:{existingEffect.duration})</color>");
+            }
+            else
+            {
+                // 기존에 없는 상태이상이라면 새로 생성하여 주머니에 추가
+                StatusEffectBase newEffect = CreateEffectInstance(effectData.type);
+                if (newEffect != null)
+                {
+                    newEffect.Init(caster, target, effectData);
+                    target.activeEffects.Add(newEffect);
+                    Debug.Log($"<color=magenta>[상태이상] {target.unitName}에게 {effectData.type}(위력:{effectData.value}) 부여됨!</color>");
+                }
             }
         }
     }
@@ -63,9 +84,9 @@ public class StatusEffectManager
         float multiplier = 1.0f;
         foreach (var effect in unit.activeEffects)
         {
-            // AtkUp은 위력(value) 퍼센트만큼 데미지를 증가시킴 (예: 20 -> 1.2배)
+            // AtkUp은 위력(value)을 효과의 '개수'로 인지하며, 개당 10%(* 0.1f)씩 공격력을 복리 증가가 아닌 단리로 증가시킵니다.
             if (effect.type == EffectType.AtkUp && !effect.isExpired)
-                multiplier += (effect.value * 0.01f);
+                multiplier += (effect.value * 0.1f);
         }
         return multiplier;
     }
@@ -75,9 +96,9 @@ public class StatusEffectManager
         float multiplier = 1.0f;
         foreach (var effect in unit.activeEffects)
         {
-            // DefDown은 대상이 받는 데미지를 증가시킴 (배율)
+            // DefDown은 위력(value)을 효과의 '개수'로 인지하며, 개당 10%(* 0.1f)씩 대상이 받는 데미지 배율을 증가시킵니다.
             if (effect.type == EffectType.DefDown && !effect.isExpired)
-                multiplier += (effect.value * 0.01f);
+                multiplier += (effect.value * 0.1f);
         }
         return multiplier;
     }

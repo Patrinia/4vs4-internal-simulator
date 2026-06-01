@@ -42,18 +42,19 @@ public class UnitControl : MonoBehaviour
     // [1. 초기화 및 기본 로직]
     // ========================================================================
 
-    // [업데이트] 세션 데이터 분리 원칙에 따라 시작 체력(startingHP)을 외부에서 주입받습니다.
-    public void Init(UnitData data, int startingHP, bool isPlayerSide)
+    // 세션 데이터 분리 원칙에 따라 시작 상태(CurrentPartyState)를 구조체 형태로 주입받습니다.
+    public void Init(UnitData data, CurrentPartyState startingState, bool isPlayerSide)
     {
         SourceData = data;
         isPlayer = isPlayerSide;
-        currentHP = startingHP; // [업데이트] 스스로 maxHP로 채우지 않고 주입받은 체력 적용
+        currentHP = startingState.currentHP; // [업데이트] 구조체에서 꺼낸 세션 체력 적용
         isDead = false;
 
         currentAttributes.Clear();
         skillCooldowns.Clear(); // 쿨타임 초기화
         activeEffects.Clear();  // 초기화 시 상태이상 리스트도 비웁니다.
 
+        // 1. 정적 데이터(Excel)에 선언된 속성 종류를 화이트리스트로 먼저 등록합니다 (속성이 아예 없는 무공 개체 방어)
         if (data.baseAttributes != null)
         {
             foreach (var attr in data.baseAttributes)
@@ -63,6 +64,16 @@ public class UnitControl : MonoBehaviour
                     currentAttributes.Add(attr.type, attr.baseValue);
                 }
             }
+        }
+
+        // 2. 등록된 속성 보유 여부를 검사하여, 유효한 속성에만 장부의 세션 값을 주입합니다 (데이터 오염 방지)
+        if (currentAttributes.ContainsKey(AttributeType.YinYang))
+        {
+            currentAttributes[AttributeType.YinYang] = startingState.yinYangValue;
+        }
+        if (currentAttributes.ContainsKey(AttributeType.Dream))
+        {
+            currentAttributes[AttributeType.Dream] = startingState.dreamValue;
         }
     }
 
@@ -94,7 +105,7 @@ public class UnitControl : MonoBehaviour
         {
             int nextValue = currentAttributes[type] + amount;
 
-            // [업데이트] 즉사 판정 및 강제 고정(Clamp) 로직을 완전히 제거하여, 
+            // 즉사 판정 및 강제 고정(Clamp) 로직을 완전히 제거하여, 
             // 턴 시작 전까지 초과/미달 수치를 그대로 유지(세이브 플레이 허용)하도록 해방합니다.
             currentAttributes[type] = nextValue;
         }
@@ -124,7 +135,7 @@ public class UnitControl : MonoBehaviour
     {
         if (currentAttributes.TryGetValue(AttributeType.YinYang, out int yinYangValue))
         {
-            // 양기 침식: 수치가 90~100일 경우 제어권 상실 (무작위 행동)
+            // 양기 침식: 수치가 90~100일 경우 제어권 상失 (무작위 행동)
             if (yinYangValue >= 90) return true;
         }
         return false;

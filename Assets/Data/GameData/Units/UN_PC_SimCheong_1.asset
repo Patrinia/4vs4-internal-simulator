@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10073fda25fdb1459f2c8c6ab8bc61e, type: 3}
+  m_Name: UN_PC_SimCheong_1
+  m_EditorClassIdentifier: Assembly-CSharp::UnitData
+  unitID: UN_PC_SimCheong_1
+  unitName: "\uC2EC\uCCAD"
+  unitRank: 1
+  maxHP: 150
+  minSpeed: 9
+  maxSpeed: 13
+  baseAttributes:
+  - type: 1
+    baseValue: 50
+  isImmuneToCorrosion: 1
+  normalSkillPool:
+  - {fileID: 11400000, guid: 14ed9737a8c715e49af8d5109ba60276, type: 2}
+  - {fileID: 11400000, guid: 1eec5b8ae2e666a4db37788d626d8e99, type: 2}
+  - {fileID: 11400000, guid: 0fb128a60f2fd8a4d9a6a5fd4ef9232e, type: 2}
+  - {fileID: 11400000, guid: f4b8247ba9ec1084aa70e4719b4f01ef, type: 2}
+  movementSkill: {fileID: 11400000, guid: 4ee49be6491885244a50af887ccd8883, type: 2}
+  ultimateSkillPool:
+  - {fileID: 11400000, guid: f0c18f04145786f439fa90003abc5160, type: 2}
+  - {fileID: 11400000, guid: b6d7bdeae8c3d0242aa31f21bdf418fd, type: 2}
+  defaultAIBrainType: 1
+  unitPrefab: {fileID: 0}
+  unitPortrait: {fileID: 0}

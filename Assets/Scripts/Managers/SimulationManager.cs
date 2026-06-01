@@ -121,10 +121,10 @@ public class SimulationManager : MonoBehaviour
             isCurrentBattleFinished = false;
 
             // 1. 유닛 세팅 및 초기화 (임시 하드코딩 제거 및 매니저 체인 연동)
-            // 매 시뮬레이션 루프마다 장부의 체력을 100%로 갱신하여 독립된 평행 우주를 만듭니다.
-            PartyRoster.Instance.ResetAllHP();
+            // 매 시뮬레이션 루프마다 장부의 체력과 속성값을 초기값으로 갱신하여 독립된 평행 우주를 만듭니다.
+            PartyRoster.Instance.ResetAllStates();
 
-            // SpawnManager에게 아군/적군 명단을 넘겨주고, 스킬과 뇌가 장착된 8명의 육체를 받아옵니다.
+            // SpawnManager에게 아군/적군 명단을 넘겨주고, 스킬과 뇌가 장착된 최대 8명의 육체를 받아옵니다.
             List<UnitControl> unitsForThisBattle = SpawnManager.Instance.SetupUnitsForSimulation(
                 PartyRoster.Instance.playerParty,
                 PartyRoster.Instance.enemyParty

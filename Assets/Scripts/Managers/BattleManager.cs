@@ -112,6 +112,26 @@ public class BattleManager : MonoBehaviour
 
         Debug.Log("<color=red><b>[BattleManager] 전투가 완전히 종료되었습니다. 결과를 집계하고 방송을 송출합니다.</b></color>");
 
+        // 전투 종료 시점에 플레이어측 유닛들의 실시간 생존/속성 데이터를 추출하여 PartyRoster 장부에 덮어쓰기(Save)
+        if (PartyRoster.Instance != null)
+        {
+            foreach (UnitControl unit in allUnits)
+            {
+
+                if (unit != null && unit.isPlayer && unit.SourceData != null)
+                {
+                    CurrentPartyState finalState = new CurrentPartyState
+                    {
+                        currentHP = unit.isDead ? 0 : unit.currentHP,
+                        yinYangValue = unit.currentAttributes.TryGetValue(AttributeType.YinYang, out int yy) ? yy : 50,
+                        dreamValue = unit.currentAttributes.TryGetValue(AttributeType.Dream, out int dm) ? dm : 0
+                    };
+
+                    PartyRoster.Instance.UpdateUnitState(unit.SourceData, finalState);
+                }
+            }
+        }
+
         // 전투 최종 종료 시점 이벤트 발동 (승패 정산용)
         statusManager.OnBattleEnd(allUnits);
 

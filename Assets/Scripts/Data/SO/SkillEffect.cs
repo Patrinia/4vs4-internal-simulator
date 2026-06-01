@@ -7,7 +7,7 @@ using UnityEngine;
 // 2. 런타임에 유닛에게 부착될 상태이상 추상 클래스 (StatusEffectBase)
 // ====================================================
 
-#region 1. 정적 데이터 규격 (Data Container)
+// 1. 정적 데이터 규격 (Data Container)
 
 /// <summary>
 /// 상태이상의 종류를 정의합니다. 기획이 추가될 때마다 여기에 누적됩니다.
@@ -33,9 +33,8 @@ public struct SkillEffectData
     public int duration;
 }
 
-#endregion
 
-#region 2. 런타임 동적 객체 규격 (Runtime Object)
+// 2. 런타임 동적 객체 규격 (Runtime Object)
 
 /// <summary>
 /// 전투 중 유닛에게 부착되어 스스로 생명주기를 관리하는 상태이상 기본 클래스입니다.
@@ -88,5 +87,3 @@ public abstract class StackEffect : StatusEffectBase
     // 스택제는 duration을 사용하지 않으며, 구체적인 감소 로직(절반, -1 등)은 
     // 이를 상속받을 BurnEffect, BleedEffect 등 개별 클래스에서 직접 제어합니다.
 }
-
-#endregion

@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ecf74853453401499eae0c77886ef83, type: 3}
+  m_Name: SK_M_5_001
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  skillID: SK_M_5_001
+  skillName: "\uC2E0\uBC95 \uC774\uB3D9"
+  category: 2
+  description: "\uC9C0\uC815\uB41C \uC9C4\uD615 \uC704\uCE58\uB85C \uC2E0\uC18D\uD558\uAC8C
+    \uC774\uB3D9\uD569\uB2C8\uB2E4."
+  maxCooldown: 1
+  minDamage: 0
+  maxDamage: 0
+  minHeal: 0
+  maxHeal: 0
+  targetType: 3
+  maxTargetCount: 1
+  subTargetOffsets: 
+  subTargetDamageRatio: 0
+  skillTendencies: 04000000
+  attributeModifiers: []
+  statusEffects: []
+  skillIcon: {fileID: 0}
+  vfxPrefab: {fileID: 0}
+  sfxClip: {fileID: 0}

@@ -64,8 +64,8 @@ public class CSVToSOParser : EditorWindow
 
             string[] columns = lines[i].Split(',');
 
-            // CSV 컬럼 순서 (업데이트): ID(0), Name(1), Category(2), Tendencies(3), TargetType(4), MaxTargetCount(5), 
-            // SubTargetOffsets(6), SubTargetDamageRatio(7), MaxCooldown(8), MinDamage(9), MaxDamage(10), MinHeal(11), MaxHeal(12), AttrMods(13), StatusEffects(14), Desc(15)
+            // CSV 컬럼 순서 (교정 완료): ID(0), Name(1), Category(2), Tendencies(3), TargetType(4), MaxTargetCount(5), 
+            // SubTargetOffsets(6), SubTargetDamageRatio(7), MaxCooldown(8), MinDamage(9), MaxDamage(10), MinHeal(11), MaxHeal(12), StatusEffects(13), AttrMods(14), Desc(15)
             string skillID = columns[0];
 
             string assetPath = $"{skillDataPath}/{skillID}.asset";
@@ -82,10 +82,10 @@ public class CSVToSOParser : EditorWindow
             skillData.skillID = skillID;
             skillData.skillName = columns[1];
 
-            // Category (인덱스 2로 변경)
+            // Category
             skillData.category = (SkillCategory)Enum.Parse(typeof(SkillCategory), columns[2]);
 
-            // Tendencies (인덱스 3으로 변경)
+            // Tendencies
             skillData.skillTendencies.Clear();
             if (!string.IsNullOrEmpty(columns[3]))
             {
@@ -121,28 +121,11 @@ public class CSVToSOParser : EditorWindow
             skillData.minHeal = int.Parse(columns[11]);
             skillData.maxHeal = int.Parse(columns[12]);
 
-            // 속성 조작 파싱 (인덱스 13으로 변경)
-            skillData.attributeModifiers.Clear();
+            // 상태이상, 버프들의 위력,지속시간의 선택적 하이브리드 파싱 (인덱스 13)
+            skillData.statusEffects.Clear();
             if (!string.IsNullOrEmpty(columns[13]))
             {
-                string[] modifiers = columns[13].Split(';');
-                foreach (string m in modifiers)
-                {
-                    string[] parts = m.Split(':');
-                    AttributeModifier mod = new AttributeModifier
-                    {
-                        type = (AttributeType)Enum.Parse(typeof(AttributeType), parts[0]),
-                        amount = int.Parse(parts[1])
-                    };
-                    skillData.attributeModifiers.Add(mod);
-                }
-            }
-
-            // 신규: 상태이상(하이브리드) 파싱 (인덱스 14)
-            skillData.statusEffects.Clear();
-            if (!string.IsNullOrEmpty(columns[14]))
-            {
-                string[] effects = columns[14].Split(';');
+                string[] effects = columns[13].Split(';');
                 foreach (string e in effects)
                 {
                     string[] parts = e.Split('_');
@@ -154,6 +137,23 @@ public class CSVToSOParser : EditorWindow
                         duration = parts.Length >= 3 ? int.Parse(parts[2]) : 0
                     };
                     skillData.statusEffects.Add(effectData);
+                }
+            }
+
+            // 속성 조작 파싱 (인덱스 14)
+            skillData.attributeModifiers.Clear();
+            if (!string.IsNullOrEmpty(columns[14]))
+            {
+                string[] modifiers = columns[14].Split(';');
+                foreach (string m in modifiers)
+                {
+                    string[] parts = m.Split(':');
+                    AttributeModifier mod = new AttributeModifier
+                    {
+                        type = (AttributeType)Enum.Parse(typeof(AttributeType), parts[0]),
+                        amount = int.Parse(parts[1])
+                    };
+                    skillData.attributeModifiers.Add(mod);
                 }
             }
 

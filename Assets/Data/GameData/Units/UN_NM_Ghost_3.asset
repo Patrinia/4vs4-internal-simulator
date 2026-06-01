@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10073fda25fdb1459f2c8c6ab8bc61e, type: 3}
+  m_Name: UN_NM_Ghost_3
+  m_EditorClassIdentifier: Assembly-CSharp::UnitData
+  unitID: UN_NM_Ghost_3
+  unitName: "\uC6D0\uADC0"
+  unitRank: 3
+  maxHP: 60
+  minSpeed: 12
+  maxSpeed: 15
+  baseAttributes:
+  - type: 1
+    baseValue: 50
+  isImmuneToCorrosion: 0
+  normalSkillPool:
+  - {fileID: 11400000, guid: c6eeb76b5e430424f94f484a2074d74b, type: 2}
+  - {fileID: 11400000, guid: 478d11143f34cf549bb6c2c75c4b97a9, type: 2}
+  - {fileID: 11400000, guid: caaad72a3adea164b9f90ef07989b7e5, type: 2}
+  movementSkill: {fileID: 11400000, guid: 1be0bbc5316044246bfc90fe4f73b61a, type: 2}
+  ultimateSkillPool: []
+  defaultAIBrainType: 3
+  unitPrefab: {fileID: 0}
+  unitPortrait: {fileID: 0}

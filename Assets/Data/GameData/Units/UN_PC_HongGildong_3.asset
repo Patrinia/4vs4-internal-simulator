@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10073fda25fdb1459f2c8c6ab8bc61e, type: 3}
+  m_Name: UN_PC_HongGildong_3
+  m_EditorClassIdentifier: Assembly-CSharp::UnitData
+  unitID: UN_PC_HongGildong_3
+  unitName: "\uD64D\uAE38\uB3D9"
+  unitRank: 3
+  maxHP: 120
+  minSpeed: 12
+  maxSpeed: 16
+  baseAttributes:
+  - type: 1
+    baseValue: 50
+  isImmuneToCorrosion: 1
+  normalSkillPool:
+  - {fileID: 11400000, guid: 602733848e2581543aa635d181b5cb23, type: 2}
+  - {fileID: 11400000, guid: bb5778d8d5f3bbb40b74044f4018a667, type: 2}
+  - {fileID: 11400000, guid: ce80e85beb0456b48996bf989f3b7db3, type: 2}
+  - {fileID: 11400000, guid: 32f23cf50a988f845a16febcd9cbf40b, type: 2}
+  movementSkill: {fileID: 11400000, guid: 1be0bbc5316044246bfc90fe4f73b61a, type: 2}
+  ultimateSkillPool:
+  - {fileID: 11400000, guid: 16e964bcea8be4842a766c79937f8e07, type: 2}
+  - {fileID: 11400000, guid: 0080709adb7a54a4cafe6c6dbdba5969, type: 2}
+  defaultAIBrainType: 1
+  unitPrefab: {fileID: 0}
+  unitPortrait: {fileID: 0}
