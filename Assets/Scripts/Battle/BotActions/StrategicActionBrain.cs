@@ -6,15 +6,14 @@ using UnityEngine;
 // 성향(자아)과 현재 전황 배수를 수학적으로 합산하여 
 // 최고 가치의 스킬을 찾아내는 고랭크/네임드 전용 사령관 뇌입니다.
 // ====================================================
-public class StrategicActionBrain : IUnitBrain
+public class StrategicActionBrain : BaseAIBrain
 {
     private AIPersonaBrain personaBrain;
     private ContextEvaluator contextEvaluator;
-    private UnitControl myUnit;
 
-    public void Initialize(UnitControl unit, List<SkillData> equippedSkills)
+    public override void Initialize(UnitControl unit, List<SkillData> equippedSkills)
     {
-        myUnit = unit; // 피아식별을 위해 자신을 기억
+        base.Initialize(unit, equippedSkills);
 
         // 뇌 내부에 자아와 전황 분석기 모듈을 조립합니다.
         personaBrain = new AIPersonaBrain();
@@ -24,48 +23,48 @@ public class StrategicActionBrain : IUnitBrain
         personaBrain.BuildPersona(equippedSkills);
     }
 
-    // [업데이트] FormationManager 매개변수 추가 및 전달
-    public ActionDecision SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits, FormationManager formationManager)
+    public override ActionDecision SelectNextSkill(List<SkillData> usableSkills, List<UnitControl> allUnits, FormationManager formationManager)
     {
         if (usableSkills == null || usableSkills.Count == 0) return null;
 
+        // 사거리가 안 닿는 불가능한 결정들을 부모의 필터로 사전에 컷(Cut)합니다.
+        List<ActionDecision> validDecisions = GetValidDecisions(usableSkills, allUnits, formationManager);
+
+        if (validDecisions.Count == 0) return null;
+
         float maxScore = -1f;
+        List<ActionDecision> tiedDecisions = new List<ActionDecision>();
 
-        List<ActionDecision> tiedDecisions = new List<ActionDecision>(); // 동점 스킬 기록용 리스트
-
-        foreach (SkillData skill in usableSkills)
+        foreach (ActionDecision decision in validDecisions)
         {
-            // 페르소나 배수 추출 (이 스킬이 내 성향에 얼마나 맞는가?)
-            float personaMult = personaBrain.GetPersonaMultiplier(skill);
+            float personaMult = personaBrain.GetPersonaMultiplier(decision.SelectedSkill);
 
-            // [업데이트] 타겟팅 유틸리티에 진형 정보를 넘겨 서브 타겟 경우의 수까지 포함하여 가져옵니다.
-            List<ActionDecision> possibleDecisions = TargetingUtility.GetAllPossibleDecisions(skill, myUnit, allUnits, formationManager);
+            // 평가를 위해 메인 타겟과 서브 타겟을 하나의 임시 리스트로 합칩니다.
+            List<UnitControl> totalTargets = new List<UnitControl> { decision.MainTarget };
 
-            foreach (ActionDecision decision in possibleDecisions)
+            // [방어코드] 이동기일 경우 서브 타겟이 null일 수 있으므로 방어
+            if (decision.SubTargets != null)
             {
-                // 평가를 위해 메인 타겟과 서브 타겟을 하나의 임시 리스트로 합칩니다.
-                List<UnitControl> totalTargets = new List<UnitControl> { decision.MainTarget };
                 totalTargets.AddRange(decision.SubTargets);
+            }
 
-                float contextMult = contextEvaluator.GetContextMultiplier(myUnit, skill, totalTargets);
-                float finalScore = 1.0f + (personaMult * contextMult);
+            float contextMult = contextEvaluator.GetContextMultiplier(myUnit, decision.SelectedSkill, totalTargets);
+            float finalScore = 1.0f + (personaMult * contextMult);
 
-                if (finalScore > maxScore)
-                {
-                    maxScore = finalScore;
-                    tiedDecisions.Clear();
-                    tiedDecisions.Add(decision);
-                }
-                else if (Mathf.Approximately(finalScore, maxScore))
-                {
-                    tiedDecisions.Add(decision);
-                }
+            if (finalScore > maxScore)
+            {
+                maxScore = finalScore;
+                tiedDecisions.Clear();
+                tiedDecisions.Add(decision);
+            }
+            else if (Mathf.Approximately(finalScore, maxScore))
+            {
+                tiedDecisions.Add(decision);
             }
         }
 
         if (tiedDecisions.Count == 0) return null;
 
-        // 동점인 스킬이 여러 개라면 그 중 하나를 무작위로 선택하여 예측 불가능성 부여
         return tiedDecisions[Random.Range(0, tiedDecisions.Count)];
     }
 }

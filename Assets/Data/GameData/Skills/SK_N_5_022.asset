@@ -24,6 +24,7 @@ MonoBehaviour:
   minHeal: 0
   maxHeal: 0
   targetType: 1
+  validRanges: 0100000002000000
   maxTargetCount: 3
   subTargetOffsets: ffffffff01000000
   subTargetDamageRatio: 0.5

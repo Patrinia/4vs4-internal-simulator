@@ -1,7 +1,7 @@
 SkillID,SkillName,SkillCategory,SkillTendencies,TargetType,VaildRange,MaxTargetCount,SubTargetOffsets,SubTargetDamageRatio,MaxCooldown,MinDamage,MaxDamage,MinHeal,MaxHeal,StatusEffects,AttributeModifiers,Description
-SK_M_5_001,신법 이동,DefaultMove,Utility,Self,0,1,,0,1,0,0,0,0,,,지정된 진형 위치로 신속하게 이동합니다.
-SK_M_4_002,질풍 순보,DefaultMove,Utility,Self,0,1,,0,2,0,0,0,0,AtkUp_15_1,,전방으로 보법을 밟아 이동하며 1턴간 공격력이 상승합니다.
-SK_M_3_003,그림자 잠행,DefaultMove,Utility,Self,0,1,,0,3,0,0,0,0,,,그림자에 숨어 안전한 위치로 이동합니다.
+SK_M_5_001,신법 이동,DefaultMove,Utility,Self,-3;-2;-1;1;2;3,1,,0,1,0,0,0,0,,,지정된 진형 위치로 신속하게 이동합니다.
+SK_M_4_002,질풍 순보,DefaultMove,Utility,Self,1,-1,,0,2,0,0,0,0,AtkUp_15_1,,전방으로 보법을 밟아 이동하며 1턴간 공격력이 상승합니다.
+SK_M_3_003,그림자 잠행,DefaultMove,Utility,Self,1;2;3,1,,0,3,0,0,0,0,,,그림자에 숨어 후방으로 이동합니다.
 SK_U_0_001,태극 붕괴,Ultimate,Aggressive,Enemy,1;2;3;4,4,-3;-2;-1;+1;+2;+3,1,5,40,55,0,0,,YinYang:-30,적 전체에게 데미지를 주고 음양 수치를 폭발적으로 낮춥니다.
 SK_U_1_002,광란의 일격,Ultimate,Aggressive,Enemy,1;2,1,,0,4,60,80,0,0,Bleed_5,,하나의 적에게 치명적인 상처를 입혀 출혈 위력 5를 부여합니다.
 SK_U_1_003,천명 각성,Ultimate,BuffToAlly,Ally,0;1;2;3,4,-3;-2;-1;+1;+2;+3,0,4,0,0,0,0,AtkUp_3_3,,아군 전체에게 공격력 버프 위력 3을 3턴간 주입합니다.
@@ -19,7 +19,7 @@ SK_N_5_004,기합 넣기,Normal,BuffToAlly,Self,0,1,,0,2,0,0,0,0,AtkUp_1_2,,정�
 SK_N_4_005,휩쓸기,Normal,Aggressive,Enemy,1;2,2,1,0.5,2,12,18,0,0,,,무기를 크게 휘둘러 전방의 적 2명에게 물리 데미지를 입힙니다.
 SK_N_5_006,독침 투척,Normal,DebuffToEnemy,Enemy,3;4;5;6,1,,0,1,4,6,0,0,Bleed_2,,침을 던져 미미한 피해를 주고 출혈 위력 2를 부여합니다.
 SK_N_4_007,음기 방출,Normal,Utility,Enemy,2;3,1,,0,1,8,12,0,0,,YinYang:-15,적을 타격하여 대상의 음양 게이지를 15만큼 감소시킵니다.
-SK_N_4_008,양기 주입,Normal,Utility,Ally,0;1;2;3,1,,0,1,0,0,5,10,,YinYang:15,아군을 치유하며 대상의 음양 게이지를 15만큼 증가시킵니다.
+SK_N_4_008,양기 주입,Normal,Utility;Heal,Ally,0;1;2;3,1,,0,1,0,0,5,10,,YinYang:15,아군을 치유하며 대상의 음양 게이지를 15만큼 증가시킵니다.
 SK_N_4_009,연속 타격,Normal,Aggressive,Enemy,1,1,,0,2,18,24,0,0,,,적의 약점을 빠르게 두 번 타격하여 강력한 피해를 입힙니다.
 SK_N_3_010,방패 가격,Normal,DebuffToEnemy,Enemy,1,1,,0,3,10,14,0,0,Stun_1_1,,방패로 강하게 내리쳐 피해를 주고 1턴간 기절 위력 1을 부여합니다.
 SK_N_4_011,하단 걷어차기,Normal,Aggressive,Enemy,1;2,2,1,0.3,2,8,12,0,0,,,다리를 걸어 전방의 적 2명에게 가벼운 피해를 입힙니다.

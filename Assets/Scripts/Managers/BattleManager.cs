@@ -26,6 +26,9 @@ public class BattleManager : MonoBehaviour
     private Queue<UnitControl> turnQueue = new Queue<UnitControl>(); // 이번 라운드의 턴 대기열
     private int currentRound = 0; // 현재 라운드 수
 
+    // 지연된 사망 처리를 위한 중앙 대기열 (중복 방지를 위해 HashSet 사용)
+    private HashSet<UnitControl> deathQueue = new HashSet<UnitControl>();
+
     // 전투가 완전히 종료되었을 때 외부(SimulationManager 등)에 알리는 방송국(이벤트)
     public event Action OnBattleEnded;
 
@@ -37,12 +40,11 @@ public class BattleManager : MonoBehaviour
         // 순수 C# 전문가 클래스들 초기화
         turnSorter = new SpeedTurnSorter();
 
-        // statusManager를 먼저 생성하고 combatResolver에게 넘겨줍니다.
+        // 의존성 주입을 위해 진형 매니저, 상태이상매니저를 먼저 만듦
+        // CombatResolver에게 상태이상/진형 매니저를 모두 넘겨줍니다.
         statusManager = new StatusEffectManager();
-        combatResolver = new CombatResolver(statusManager);
-
-        // 진형 관리자 생성
         FormationManager = new FormationManager();
+        combatResolver = new CombatResolver(statusManager, FormationManager);
     }
 
     // 기존의 Start() 내부 자동 실행 로직을 제거했습니다. 
@@ -62,6 +64,7 @@ public class BattleManager : MonoBehaviour
         allUnits = new List<UnitControl>(participatingUnits);
         currentRound = 0;
         turnQueue.Clear();
+        deathQueue.Clear(); // 사망 대기열 초기화
 
         // 2. 진형 배치 및 전투 시작 전역 기믹 발동
         InitializeBattlefield();
@@ -80,6 +83,7 @@ public class BattleManager : MonoBehaviour
     public void StopBattle()
     {
         StopAllCoroutines();
+        CleanupEventSubscriptions(); // 강제 종료 시 메모리 누수 방지
         Debug.Log("<color=red><b>[BattleManager]</b> 연쇄 정지 명령 수신: 진행 중인 전투 루프 코루틴이 강제 종료되었습니다.</color>");
     }
 
@@ -89,7 +93,36 @@ public class BattleManager : MonoBehaviour
         List<UnitControl> enemies = allUnits.Where(u => !u.isPlayer).ToList();
 
         FormationManager.InitializeFormation(players, enemies);
+
+        // 모든 유닛의 사망 이벤트를 중앙 매니저가 구독합니다.
+        foreach (var unit in allUnits)
+        {
+            if (unit != null)
+            {
+                // 중복 구독 방지를 위해 뺐다가 다시 넣습니다.
+                unit.OnDeathConditionMet -= HandleUnitDeathCondition;
+                unit.OnDeathConditionMet += HandleUnitDeathCondition;
+            }
+        }
+
         Debug.Log("<b>[BattleManager]</b> 유닛들이 진형 체스판에 성공적으로 배치되었습니다.");
+    }
+
+    // 유닛이 죽음의 신호탄을 쏘면 큐에 등록합니다.
+    private void HandleUnitDeathCondition(UnitControl unit)
+    {
+        if (unit != null && !deathQueue.Contains(unit))
+        {
+            deathQueue.Add(unit);
+        }
+    }
+
+    private void CleanupEventSubscriptions()
+    {
+        foreach (var unit in allUnits)
+        {
+            if (unit != null) unit.OnDeathConditionMet -= HandleUnitDeathCondition;
+        }
     }
 
     // ========================================================================
@@ -107,6 +140,8 @@ public class BattleManager : MonoBehaviour
 
             // [Phase 1: 라운드 시작]
             statusManager.OnRoundStart(allUnits);
+            ProcessDeathQueue(); // [Sync Point 1] 라운드 시작 시 도트딜 사망자 정리
+
             turnQueue = turnSorter.BuildTurnQueue(GetAliveUnits());
 
             // [Phase 2: 턴 반복 루프]
@@ -122,6 +157,8 @@ public class BattleManager : MonoBehaviour
 
             // [Phase 3: 라운드 종료]
             statusManager.OnRoundEnd(allUnits);
+            ProcessDeathQueue(); // [Sync Point 5] 라운드 종료 시 도트딜/기믹 사망자 정리
+
             Debug.Log($"<color=orange>=== 라운드 {currentRound} 종료 ===</color>");
             yield return new WaitForSeconds(1.0f);
         }
@@ -133,7 +170,6 @@ public class BattleManager : MonoBehaviour
         {
             foreach (UnitControl unit in allUnits)
             {
-
                 if (unit != null && unit.isPlayer && unit.SourceData != null)
                 {
                     CurrentPartyState finalState = new CurrentPartyState
@@ -148,18 +184,28 @@ public class BattleManager : MonoBehaviour
             }
         }
 
-        // 전투 최종 종료 시점 이벤트 발동 (승패 정산용)
-        statusManager.OnBattleEnd(allUnits);
-
-        // 상위 매니저들에게 전투가 끝났음을 알림 (옵저버 패턴)
-        OnBattleEnded?.Invoke();
+        CleanupEventSubscriptions(); // 메모리 누수 방지
+        statusManager.OnBattleEnd(allUnits); // 전투 최종 종료 시점 이벤트 발동 (승패 정산용)
+        OnBattleEnded?.Invoke(); // 상위 매니저들에게 전투가 끝났음을 알림 (옵저버 패턴)
     }
 
     private IEnumerator ProcessTurn(UnitControl unit)
     {
         Debug.Log($"[{unit.unitName}] 턴 시작.");
 
+        // [(Track B)] 턴 시작 시 침식 과다(0 미만, 100 초과) 여부를 가장 먼저 검사합니다.
+        // 팀원이 힐/게이지 조작으로 구제해주지 못했다면 이 시점에 즉사(턴 스킵)합니다.
+        if (unit.CheckAndTriggerErosionDeath())
+        {
+            ProcessDeathQueue(); // 큐에 등록된 자신을 즉시 청소합니다.
+            yield break;
+        }
+
         statusManager.OnTurnStart(unit);
+        ProcessDeathQueue(); // [Sync Point 2] 턴 시작 도트딜 사망자 정리
+
+        // 만약 턴 시작 도트딜에 죽었다면 행동 불가
+        if (unit.isDead) yield break;
 
         if (unit.IsUnableToAct())
         {
@@ -183,9 +229,12 @@ public class BattleManager : MonoBehaviour
             }
         }
 
-        combatResolver.ResolveCombatResults(allUnits);
+        ProcessDeathQueue(); // [Sync Point 3] 스킬 사용(ExecuteAction) 직후 데미지/반사 사망자 정리
+
         statusManager.OnTurnEnd(unit);
         unit.DecreaseCooldowns();
+
+        ProcessDeathQueue(); // [Sync Point 4] 턴 종료 도트딜/기믹 사망자 정리
 
         Debug.Log($"[{unit.unitName}] 턴 종료.");
     }
@@ -238,8 +287,32 @@ public class BattleManager : MonoBehaviour
     }
 
     // ========================================================================
-    // [유틸리티 함수]
+    // [유틸리티 및 시스템 함수]
     // ========================================================================
+
+    // 대기열에 모인 사망자들을 일괄적으로 논리/물리적 처리하는 중앙 청소기
+    private void ProcessDeathQueue()
+    {
+        if (deathQueue.Count == 0) return;
+
+        foreach (UnitControl deadUnit in deathQueue)
+        {
+            if (deadUnit == null || deadUnit.isDead) continue;
+
+            deadUnit.isDead = true;
+            Debug.Log($"<color=black><b>[사망]</b> {deadUnit.unitName}이(가) 쓰러졌습니다!</color>");
+
+            // 1. 논리적 진형(체스판)에서 이탈시켜 빈칸 확보 (Summon 기믹 대비)
+            FormationManager.RemoveUnit(deadUnit);
+
+            // 2. 물리적 비활성화 (오브젝트 풀링 반환)
+            // (추후 C단계 게임씬 적용 시, IUnitLifecycleHandler를 주입받아 화려한 사망 연출로 분기할 수 있습니다.)
+            deadUnit.gameObject.SetActive(false);
+        }
+
+        deathQueue.Clear();
+    }
+
     private List<UnitControl> GetAliveUnits()
     {
         return allUnits.Where(u => u != null && !u.isDead).ToList();

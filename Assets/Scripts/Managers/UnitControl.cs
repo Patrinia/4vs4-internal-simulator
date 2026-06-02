@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 // ====================================================
 // [UnitControl.cs]
@@ -18,6 +19,15 @@ public class UnitControl : MonoBehaviour
     public int currentSpeed;     // 이번 라운드의 현재 속도
     public bool isDead = false;  // 사망 여부 플래그
     public bool isPlayer;        // 아군/적군 판별 플래그
+
+    // 침식 특수 사망에 면역인지 여부 (기본값 false)
+    public bool corrosionImmune = false;
+
+    // 체력 고갈, 즉사 기믹, 침식 초과 시 BattleManager에게 알리는 이벤트
+    public event Action<UnitControl> OnDeathConditionMet;
+
+    // 진형 내 자신의 인덱스를 캐싱하는 변수 (오직 FormationManager에 의해서만 갱신됨)
+    public int positionIndex = -1;
 
     // 게이지 임계치 초과로 인한 침식 즉사 상태 플래그
     public bool isCorrosioned = false;
@@ -47,7 +57,7 @@ public class UnitControl : MonoBehaviour
     {
         SourceData = data;
         isPlayer = isPlayerSide;
-        currentHP = startingState.currentHP; // [업데이트] 구조체에서 꺼낸 세션 체력 적용
+        currentHP = startingState.currentHP;
         isDead = false;
 
         currentAttributes.Clear();
@@ -92,7 +102,7 @@ public class UnitControl : MonoBehaviour
     {
         if (SourceData != null)
         {
-            currentSpeed = Random.Range(SourceData.minSpeed, SourceData.maxSpeed + 1);
+            currentSpeed = UnityEngine.Random.Range(SourceData.minSpeed, SourceData.maxSpeed + 1);
         }
     }
 
@@ -141,7 +151,7 @@ public class UnitControl : MonoBehaviour
         return false;
     }
 
-    // Phase 2-5. 결과 정산 시 CombatResolver가 호출할 데미지 적용 함수
+    // 스킬 피격 및 상태이상(도트딜) 발동 시 호출되는 통합 데미지 적용 함수
     public void TakeDamage(int damage)
     {
         if (isDead) return;
@@ -151,8 +161,11 @@ public class UnitControl : MonoBehaviour
         if (currentHP <= 0)
         {
             currentHP = 0;
-            // 주의: 여기서 즉시 isDead = true 처리를 하지 않습니다!
-            // '불사(1턴 버티기)' 버프 기믹을 위해, 사망 판정은 CombatResolver가 일괄 수행합니다.
+            // 주의: 여기서 즉시 isDead = true 처리를 하지 않으며 맵에서 지우지도 않습니다!
+            // 불사 기믹 및 동시 사망 처리를 위해, 실제 사망 판정 및 청소는 BattleManager(사망 대기열)가 일괄 수행합니다.
+
+            // 체력이 0이 되면 중앙 통제소(BattleManager)의 사망 대기열에 자신을 등록해달라고 요청합니다.
+            OnDeathConditionMet?.Invoke(this);
         }
     }
 
@@ -170,7 +183,7 @@ public class UnitControl : MonoBehaviour
     }
 
     // ========================================================================
-    // [3. 전투 자원 및 쿨타임 관리 로직 (신규)]
+    // [3. 전투 자원 및 쿨타임 관리 로직]
     // ========================================================================
 
     public int GetCooldown(SkillData skill)
@@ -191,5 +204,40 @@ public class UnitControl : MonoBehaviour
         {
             if (skillCooldowns[key] > 0) skillCooldowns[key]--;
         }
+    }
+
+    // ========================================================================
+    // [특수 사망 및 강제 처형 헬퍼]
+    // ========================================================================
+
+    /// <summary>
+    /// 기믹/스크립트에 의해 대상이 즉사(처형)당할 때 호출됩니다. (유형 4)
+    /// </summary>
+    public void ForceKill()
+    {
+        if (isDead) return;
+        currentHP = 0;
+        OnDeathConditionMet?.Invoke(this);
+    }
+
+    /// <summary>
+    /// 턴 시작 시 호출되어, 침식 한계 돌파(0 미만, 100 초과)로 인한 특수 사망(유형 3)을 판별합니다.
+    /// 만약 조건이 맞다면 이벤트를 발송하고 true를 반환합니다.
+    /// </summary>
+    public bool CheckAndTriggerErosionDeath()
+    {
+        // 이미 사망했거나 면역이면 무시합니다.
+        if (isDead || corrosionImmune) return false;
+
+        if (currentAttributes.TryGetValue(AttributeType.YinYang, out int yinYangValue))
+        {
+            if (yinYangValue < 0 || yinYangValue > 100)
+            {
+                Debug.Log($"<color=purple>[침식 붕괴] {unitName}의 음/양 수치가 한계를 돌파({yinYangValue})하여 특수 사망합니다!</color>");
+                OnDeathConditionMet?.Invoke(this);
+                return true;
+            }
+        }
+        return false;
     }
 }

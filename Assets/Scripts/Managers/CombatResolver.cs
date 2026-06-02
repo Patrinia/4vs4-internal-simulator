@@ -2,16 +2,19 @@
 using UnityEngine;
 
 // 스킬의 난수 굴림, 버프/디버프 연산, 그리고 최종 적용을 담당하는 전문가
-// 전투 결과 정산 및 사망 처리 전문가
+// (사망 처리 및 진형 정산은 BattleManager의 대기열 시스템으로 이관됨)
 public class CombatResolver
 {
     // StatusEffectManager에 대한 의존성 주입 (팩토리 기능 사용)
     private StatusEffectManager effectManager;
+    // 진형 이동 처리를 위한 의존성 주입 추가
+    private FormationManager formationManager;
 
     // 의존성 주입을 위한 생성자. 주입되지 않으면 null로 초기화됩니다.
-    public CombatResolver(StatusEffectManager effectManager = null)
+    public CombatResolver(StatusEffectManager effectManager = null, FormationManager formationManager = null)
     {
         this.effectManager = effectManager;
+        this.formationManager = formationManager; // 주입받은 매니저 저장
     }
 
     // ActionDecision을 통째로 받아 메인(100%)과 서브(배율)를 분리하여 연산합니다.
@@ -21,8 +24,45 @@ public class CombatResolver
 
         SkillData skill = decision.SelectedSkill;
 
-        // 1. 데미지 또는 힐량 판별 및 위력 굴림
+        // ====================================================
+        // 분기 1: 이동 스킬 (데미지 연산 완전 스킵)
+        // ====================================================
+        if (skill.skillTendencies.Contains(TendencyType.SelfMove) || decision.TargetSlotIndex != -1)
+        {
+            if (formationManager != null)
+            {
+                formationManager.MoveUnitToSlot(caster, decision.TargetSlotIndex);
+                // 이동기에 달린 부가 버프/기믹이 있다면 1회 적용
+                if (effectManager != null) effectManager.ApplySkillEffects(caster, caster, skill);
+            }
+            return;
+        }
+
         bool isHealSkill = skill.skillTendencies.Contains(TendencyType.Heal);
+        bool isAggressiveSkill = skill.skillTendencies.Contains(TendencyType.Aggressive);
+
+        // ====================================================
+        // 분기 2: 순수 유틸리티 스킬 (0 데미지 텍스트 방지)
+        // ====================================================
+        if (!isHealSkill && !isAggressiveSkill)
+        {
+            Debug.Log($"<color=yellow>[{caster.unitName}]가 [{decision.MainTarget.unitName}]에게 기믹/유틸리티({skill.skillName})을 시전했습니다.</color>");
+
+            // HP 조작 없이 상태이상 매니저만 즉시 호출
+            if (effectManager != null)
+            {
+                effectManager.ApplySkillEffects(caster, decision.MainTarget, skill);
+                foreach (var sub in decision.SubTargets)
+                {
+                    effectManager.ApplySkillEffects(caster, sub, skill);
+                }
+            }
+            return;
+        }
+
+        // ====================================================
+        // 분기 3: 기존 위력 연산 (Aggressive 또는 Heal)
+        // ====================================================
         int baseValue = 0;
 
         if (isHealSkill)
@@ -116,11 +156,5 @@ public class CombatResolver
         int predictedDamage = averageBasePower;
 
         return predictedDamage;
-    }
-
-    public void ResolveCombatResults(List<UnitControl> allUnits)
-    {
-        //Phase 2-5
-        //대미지 계산, 반사 데미지, 사망 체크 등 기능 구현 예정
     }
 }

@@ -64,8 +64,8 @@ public class CSVToSOParser : EditorWindow
 
             string[] columns = lines[i].Split(',');
 
-            // CSV 컬럼 순서 (교정 완료): ID(0), Name(1), Category(2), Tendencies(3), TargetType(4), MaxTargetCount(5), 
-            // SubTargetOffsets(6), SubTargetDamageRatio(7), MaxCooldown(8), MinDamage(9), MaxDamage(10), MinHeal(11), MaxHeal(12), StatusEffects(13), AttrMods(14), Desc(15)
+            // CSV 컬럼 순서 : ID(0), Name(1), Category(2), Tendencies(3), TargetType(4), VaildRange(5), MaxTargetCount(6), 
+            // SubTargetOffsets(7), SubTargetDamageRatio(8), MaxCooldown(9), MinDamage(10), MaxDamage(11), MinHeal(12), MaxHeal(13), StatusEffects(14), AttrMods(15), Desc(16)
             string skillID = columns[0];
 
             string assetPath = $"{skillDataPath}/{skillID}.asset";
@@ -98,13 +98,25 @@ public class CSVToSOParser : EditorWindow
 
             skillData.targetType = (TargetType)Enum.Parse(typeof(TargetType), columns[4]);
 
-            skillData.maxTargetCount = int.Parse(columns[5]);
+            // ValidRange 파싱 (인덱스 5) - 세미콜론(;) 단위 분리
+            skillData.validRanges.Clear();
+            if (!string.IsNullOrEmpty(columns[5]))
+            {
+                string[] ranges = columns[5].Split(';');
+                foreach (string r in ranges)
+                {
+                    skillData.validRanges.Add(int.Parse(r));
+                }
+            }
+
+            //스킬의 타겟수 - 메인타겟으로 인해 기본값 1
+            skillData.maxTargetCount = int.Parse(columns[6]);
 
             // 서브 타겟 오프셋 파싱 (예: -1;+1)
             skillData.subTargetOffsets.Clear();
-            if (!string.IsNullOrEmpty(columns[6]))
+            if (!string.IsNullOrEmpty(columns[7]))
             {
-                string[] offsets = columns[6].Split(';');
+                string[] offsets = columns[7].Split(';');
                 foreach (string o in offsets)
                 {
                     skillData.subTargetOffsets.Add(int.Parse(o));
@@ -112,20 +124,20 @@ public class CSVToSOParser : EditorWindow
             }
 
             // 공란(Empty) 예외 처리 추가 - 값이 없으면 0f 처리
-            skillData.subTargetDamageRatio = string.IsNullOrEmpty(columns[7]) ? 0f : float.Parse(columns[7]);
+            skillData.subTargetDamageRatio = string.IsNullOrEmpty(columns[8]) ? 0f : float.Parse(columns[8]);
 
-            // 위력 분리 및 쿨타임 (인덱스 8 ~ 12)
-            skillData.maxCooldown = int.Parse(columns[8]);
-            skillData.minDamage = int.Parse(columns[9]);
-            skillData.maxDamage = int.Parse(columns[10]);
-            skillData.minHeal = int.Parse(columns[11]);
-            skillData.maxHeal = int.Parse(columns[12]);
+            // 위력 분리 및 쿨타임 (인덱스 9 ~ 13)
+            skillData.maxCooldown = int.Parse(columns[9]);
+            skillData.minDamage = int.Parse(columns[10]);
+            skillData.maxDamage = int.Parse(columns[11]);
+            skillData.minHeal = int.Parse(columns[12]);
+            skillData.maxHeal = int.Parse(columns[13]);
 
-            // 상태이상, 버프들의 위력,지속시간의 선택적 하이브리드 파싱 (인덱스 13)
+            // 상태이상, 버프들의 위력,지속시간의 선택적 하이브리드 파싱 (인덱스 14)
             skillData.statusEffects.Clear();
-            if (!string.IsNullOrEmpty(columns[13]))
+            if (!string.IsNullOrEmpty(columns[14]))
             {
-                string[] effects = columns[13].Split(';');
+                string[] effects = columns[14].Split(';');
                 foreach (string e in effects)
                 {
                     string[] parts = e.Split('_');
@@ -140,11 +152,11 @@ public class CSVToSOParser : EditorWindow
                 }
             }
 
-            // 속성 조작 파싱 (인덱스 14)
+            // 속성 조작 파싱 (인덱스 15)
             skillData.attributeModifiers.Clear();
-            if (!string.IsNullOrEmpty(columns[14]))
+            if (!string.IsNullOrEmpty(columns[15]))
             {
-                string[] modifiers = columns[14].Split(';');
+                string[] modifiers = columns[15].Split(';');
                 foreach (string m in modifiers)
                 {
                     string[] parts = m.Split(':');
@@ -157,8 +169,8 @@ public class CSVToSOParser : EditorWindow
                 }
             }
 
-            // 설명 파싱 (인덱스 15로 변경)
-            skillData.description = columns.Length > 15 ? columns[15] : "";
+            // 설명 파싱 (인덱스 16)
+            skillData.description = columns.Length > 16 ? columns[16] : "";
 
             // 에셋 저장 및 어드레서블 등록
             if (isNew) AssetDatabase.CreateAsset(skillData, assetPath);
@@ -183,7 +195,7 @@ public class CSVToSOParser : EditorWindow
 
             string[] columns = lines[i].Split(',');
 
-            // CSV 컬럼 순서 (업데이트): UnitID(0), UnitName(1), UnitRank(2), AIBrainType(3), MaxHP(4), 
+            // CSV 컬럼 순서 : UnitID(0), UnitName(1), UnitRank(2), AIBrainType(3), MaxHP(4), 
             // MinSpeed(5), MaxSpeed(6), BaseAttributes(7), CorrisionImmune(8), MoveSkill(9), UltiSkillPool(10), NormalSkillPool(11)
             string unitID = columns[0];
             string assetPath = $"{unitDataPath}/{unitID}.asset";

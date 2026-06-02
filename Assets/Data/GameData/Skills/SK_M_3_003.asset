@@ -15,14 +15,14 @@ MonoBehaviour:
   skillID: SK_M_3_003
   skillName: "\uADF8\uB9BC\uC790 \uC7A0\uD589"
   category: 2
-  description: "\uADF8\uB9BC\uC790\uC5D0 \uC228\uC5B4 \uC548\uC804\uD55C \uC704\uCE58\uB85C
-    \uC774\uB3D9\uD569\uB2C8\uB2E4."
+  description: "\uADF8\uB9BC\uC790\uC5D0 \uC228\uC5B4 \uD6C4\uBC29\uC73C\uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4."
   maxCooldown: 3
   minDamage: 0
   maxDamage: 0
   minHeal: 0
   maxHeal: 0
   targetType: 3
+  validRanges: 010000000200000003000000
   maxTargetCount: 1
   subTargetOffsets: 
   subTargetDamageRatio: 0

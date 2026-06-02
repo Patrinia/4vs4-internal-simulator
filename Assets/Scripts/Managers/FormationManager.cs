@@ -18,14 +18,18 @@ public class FormationManager
 
     /// <summary>
     /// 전투 진입 시 유닛들을 진형 배열에 차례대로 배치합니다.
-    /// (추후 RoundManager에서 이 함수를 호출하여 초기화합니다.)
     /// </summary>
     public void InitializeFormation(List<UnitControl> players, List<UnitControl> enemies)
     {
         for (int i = 0; i < MAX_SLOTS; i++)
         {
             playerSlots[i] = (i < players.Count) ? players[i] : null;
+            // 유닛의 뇌에 자신의 인덱스를 직접 캐싱(주입)합니다.
+            if (playerSlots[i] != null) playerSlots[i].positionIndex = i;
+
             enemySlots[i] = (i < enemies.Count) ? enemies[i] : null;
+            // 유닛의 뇌에 자신의 인덱스를 직접 캐싱(주입)합니다.
+            if (enemySlots[i] != null) enemySlots[i].positionIndex = i;
         }
     }
 
@@ -94,6 +98,9 @@ public class FormationManager
         {
             if (unit.isPlayer) playerSlots[index] = null;
             else enemySlots[index] = null;
+
+            // [업데이트] 진형 이탈 시 인덱스 초기화
+            unit.positionIndex = -1;
         }
     }
 
@@ -114,6 +121,89 @@ public class FormationManager
             UnitControl temp = targetArray[indexA];
             targetArray[indexA] = targetArray[indexB];
             targetArray[indexB] = temp;
+
+            // [업데이트] 캐싱된 positionIndex 데이터도 서로 교환합니다.
+            unitA.positionIndex = indexB;
+            unitB.positionIndex = indexA;
+        }
+    }
+
+    // ========================================================================
+    // [빈칸 이동 및 통합 진형 제어 시스템]
+    // ========================================================================
+
+    /// <summary>
+    /// 유닛을 목표 슬롯(Index)으로 이동시킵니다. 
+    /// 목표 지점이 빈칸이면 순수 이동(Move)을, 유닛이 있다면 교환(Swap)을 수행합니다.
+    /// </summary>
+    public void MoveUnitToSlot(UnitControl unit, int targetIndex)
+    {
+        if (unit == null || unit.isDead) return;
+
+        // [업데이트 복구] 진형 이탈 방지 및 벽면 넉백 보정(Clamping)
+        // AI의 ValidRange 오프셋 연산 결과나 넉백/당기기가 맵 밖을 가리켜도 가장 끝 슬롯으로 안전하게 고정시킵니다.
+        targetIndex = Mathf.Clamp(targetIndex, 0, MAX_SLOTS - 1);
+
+        int currentIndex = GetUnitIndex(unit);
+        if (currentIndex == -1 || currentIndex == targetIndex) return; // 이미 제자리거나 진형에 없음
+
+        UnitControl[] targetArray = unit.isPlayer ? playerSlots : enemySlots;
+        UnitControl targetOccupant = targetArray[targetIndex];
+
+        if (targetOccupant == null)
+        {
+            // 1. 목표 지점이 빈칸일 경우: 내 자리 비우기 + 새 자리 차지 (순수 이동)
+            targetArray[targetIndex] = unit;
+            targetArray[currentIndex] = null;
+
+            // 캐싱된 인덱스 갱신
+            unit.positionIndex = targetIndex;
+            Debug.Log($"<color=white>[진형 변경] {unit.unitName}이(가) 빈칸({targetIndex}번 슬롯)으로 이동했습니다.</color>");
+        }
+        else
+        {
+            // 2. 목표 지점에 다른 유닛이 있을 경우: 기존 Swap 로직 재사용
+            SwapUnits(unit, targetOccupant);
+            Debug.Log($"<color=white>[진형 변경] {unit.unitName}이(가) {targetOccupant.unitName}와(과) 자리를 교환했습니다.</color>");
+        }
+    }
+
+    // ========================================================================
+    // [절대 좌표 기반 사거리 계산 시스템]
+    // ========================================================================
+
+    /// <summary>
+    /// 두 유닛 간의 1차원 절대 좌표 기반 물리적 거리를 계산하여 반환합니다.
+    /// </summary>
+    public int GetDistance(UnitControl unitA, UnitControl unitB)
+    {
+        if (unitA == null || unitB == null) return -1;
+
+        // 진형에 포함되어 있지 않은(사망 등) 경우 예외 처리
+        if (unitA.positionIndex == -1 || unitB.positionIndex == -1) return -1;
+
+        int absolutePosA = GetAbsolutePosition(unitA);
+        int absolutePosB = GetAbsolutePosition(unitB);
+
+        // 절댓값 연산으로 항상 양수의 거리를 반환
+        return Mathf.Abs(absolutePosA - absolutePosB);
+    }
+
+    /// <summary>
+    /// 내부 헬퍼 함수: 아군(0~3)과 적군(0~3)의 분리된 상대 좌표를 
+    /// 체스판 전체(0~7)의 통합 절대 좌표로 환산합니다.
+    /// </summary>
+    private int GetAbsolutePosition(UnitControl unit)
+    {
+        // 아군 진형 (3, 2, 1, 0) : 최전방인 0번 슬롯이 3이 됨
+        if (unit.isPlayer)
+        {
+            return (MAX_SLOTS - 1) - unit.positionIndex;
+        }
+        // 적군 진형 (4, 5, 6, 7) : 최전방인 0번 슬롯이 4가 됨
+        else
+        {
+            return MAX_SLOTS + unit.positionIndex;
         }
     }
 }

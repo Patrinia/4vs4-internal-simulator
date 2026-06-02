@@ -36,6 +36,11 @@ public class SkillData : ScriptableObject
     [Header("3. AI 의사결정 및 시스템 분류 (엑셀 연동)")]
     [Tooltip("이 스킬이 누구를 타겟으로 하는지 정의 (예: Enemy, Ally)")]
     public TargetType targetType;
+
+    // [업데이트] 사거리(Range) 시스템 확장에 따른 신규 데이터 필드 추가
+    [Tooltip("시전자 위치 기준으로 스킬이 닿을 수 있는 유효 거리 목록 (예: 1;2;3)")]
+    public List<int> validRanges = new List<int>();
+
     [Tooltip("스킬이 타격할 수 있는 최대 타겟 수")]
     public int maxTargetCount;
     [Tooltip("메인 타겟 인덱스 기준 서브 타겟의 상대적 위치 (예: -1, 1)")]
