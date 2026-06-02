@@ -70,7 +70,7 @@ public class PartyRoster : MonoBehaviour
 
             List<SkillData> autoSkills = new List<SkillData>();
 
-            // [업데이트] 합의된 기획 룰 적용: 이동기 1개 + 필살기 1개 + 일반 스킬 최대 4개 추출
+            // 합의된 기획 룰 적용: 이동기 1개 + 필살기 1개 + 일반 스킬 최대 4개 추출
             if (enemy.movementSkill != null)
             {
                 autoSkills.Add(enemy.movementSkill);
@@ -171,6 +171,21 @@ public class PartyRoster : MonoBehaviour
     {
         if (unit == null || skills == null) return;
         equippedSkillsDictionary[unit] = new List<SkillData>(skills);
+    }
+
+    // UI 스크립트(SimulationUIManager)가 보내는 4개의 매개변수를 받아 통합해주는 오버로딩 수신 API입니다.
+    public void SetUnitSkills(UnitData unit, SkillData moveSkill, SkillData ultSkill, List<SkillData> normalSkills)
+    {
+        if (unit == null) return;
+
+        List<SkillData> combinedSkills = new List<SkillData>();
+
+        if (moveSkill != null) combinedSkills.Add(moveSkill);
+        if (ultSkill != null) combinedSkills.Add(ultSkill);
+        if (normalSkills != null) combinedSkills.AddRange(normalSkills);
+
+        // 통합된 리스트를 기존 장부 기록 함수로 넘겨줍니다.
+        SetUnitSkills(unit, combinedSkills);
     }
 
     /// <summary>

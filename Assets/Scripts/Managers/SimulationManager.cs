@@ -96,6 +96,19 @@ public class SimulationManager : MonoBehaviour
         Time.timeScale = simulationTimeScale; // 초고속 배속 복구
     }
 
+    // UI의 단일 일시정지/재개 버튼과 통신하기 위한 토글(Toggle) 수신 API입니다.
+    public void PauseResumeSimulation()
+    {
+        if (isPaused)
+        {
+            ResumeSimulation();
+        }
+        else
+        {
+            PauseSimulation();
+        }
+    }
+
     public void StopSimulation()
     {
         if (!isRunning) return;
@@ -104,6 +117,12 @@ public class SimulationManager : MonoBehaviour
         isRunning = false;
         isPaused = false;
         Time.timeScale = 1f; // 원래 속도로 복구
+
+        // 전투 매니저(하청업체)에게도 강제 종료 명령을 하달하여 고아 코루틴(Orphan Coroutine) 방지
+        if (BattleManager.Instance != null)
+        {
+            BattleManager.Instance.StopBattle();
+        }
 
         Debug.Log("<color=red>[SimulationManager] 시뮬레이션이 강제 중단되었습니다.</color>");
     }

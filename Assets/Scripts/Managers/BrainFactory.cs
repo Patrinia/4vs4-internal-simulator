@@ -26,8 +26,19 @@ public static class BrainFactory
                 return new StrategicActionBrain();
 
             case AIBrainType.Player:
-                // 추후 UI 입력을 기다리는 HumanBrain을 리턴할 수 있습니다.
-                return null;
+                // [업데이트] 팩토리가 현재 환경을 스스로 인지합니다.
+                // SimulationManager가 존재한다면 시뮬레이션 환경이므로 가상 데이터를 위해 임시 뇌를 장착합니다.
+                if (SimulationManager.Instance != null)
+                {
+                    Debug.Log("<color=cyan>[BrainFactory] 시뮬레이션 환경 감지. Player 유닛에게 임시로 Strategic 뇌를 장착합니다.</color>");
+                    return new StrategicActionBrain();
+                }
+                else
+                {
+                    // 실제 본 게임(A-M) 환경
+                    // 추후 UI 입력을 기다리는 HumanBrain을 리턴할 수 있습니다.
+                    return null;
+                }
 
             case AIBrainType.MLAgent:
                 // [E단계] 파이썬 연동 MLAgentBrain 스크립트 작성 시 이곳에서 리턴합니다.

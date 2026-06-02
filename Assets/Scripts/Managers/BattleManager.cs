@@ -1,4 +1,4 @@
-﻿using System; // Action 이벤트를 사용하기 위해 추가
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -36,8 +36,10 @@ public class BattleManager : MonoBehaviour
 
         // 순수 C# 전문가 클래스들 초기화
         turnSorter = new SpeedTurnSorter();
-        combatResolver = new CombatResolver();
+
+        // statusManager를 먼저 생성하고 combatResolver에게 넘겨줍니다.
         statusManager = new StatusEffectManager();
+        combatResolver = new CombatResolver(statusManager);
 
         // 진형 관리자 생성
         FormationManager = new FormationManager();
@@ -45,6 +47,10 @@ public class BattleManager : MonoBehaviour
 
     // 기존의 Start() 내부 자동 실행 로직을 제거했습니다. 
     // 이제 BattleManager는 스스로 전투를 시작하지 않습니다. (수동 점화 대기)
+
+    // ========================================================================
+    // [외부 제어 API]
+    // ========================================================================
 
     /// <summary>
     /// 외부 매니저(SimulationManager, GameFlowManager)가 호출하는 수동 점화 스위치입니다.
@@ -65,6 +71,16 @@ public class BattleManager : MonoBehaviour
 
         // 3. 코어 루프 가동
         StartCoroutine(BattleLoop());
+    }
+
+    // [신규 업데이트] SimulationManager의 Stop 버튼과 연동되어 전투 코루틴을 강제 파괴하는 방어선 API
+    /// <summary>
+    /// 외부에서 시뮬레이션을 강제 중단할 때 호출하여, 내부 전투 루프 코루틴을 즉시 멈춥니다.
+    /// </summary>
+    public void StopBattle()
+    {
+        StopAllCoroutines();
+        Debug.Log("<color=red><b>[BattleManager]</b> 연쇄 정지 명령 수신: 진행 중인 전투 루프 코루틴이 강제 종료되었습니다.</color>");
     }
 
     private void InitializeBattlefield()

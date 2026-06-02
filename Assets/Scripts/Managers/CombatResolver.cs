@@ -8,6 +8,11 @@ public class CombatResolver
     // StatusEffectManager에 대한 의존성 주입 (팩토리 기능 사용)
     private StatusEffectManager effectManager;
 
+    // 의존성 주입을 위한 생성자. 주입되지 않으면 null로 초기화됩니다.
+    public CombatResolver(StatusEffectManager effectManager = null)
+    {
+        this.effectManager = effectManager;
+    }
 
     // ActionDecision을 통째로 받아 메인(100%)과 서브(배율)를 분리하여 연산합니다.
     public void ExecuteAction(UnitControl caster, ActionDecision decision)
@@ -16,7 +21,7 @@ public class CombatResolver
 
         SkillData skill = decision.SelectedSkill;
 
-        // [업데이트] 1. 데미지 또는 힐량 판별 및 위력 굴림
+        // 1. 데미지 또는 힐량 판별 및 위력 굴림
         bool isHealSkill = skill.skillTendencies.Contains(TendencyType.Heal);
         int baseValue = 0;
 
@@ -26,9 +31,19 @@ public class CombatResolver
             baseValue = Random.Range(skill.minDamage, skill.maxDamage + 1);
 
         // 2. 버프/디버프 연산 (기믹 파이프라인)
-        // [업데이트] StatusEffectManager를 통해 실제 버프 수치를 가져옵니다.
-        float buffMultiplier = effectManager.GetAttackMultiplier(caster);
-        float debuffMultiplier = effectManager.GetDefenseMultiplier(decision.MainTarget);
+        float buffMultiplier = 1.0f;
+        float debuffMultiplier = 1.0f;
+
+        // 방어선(Guard Clause) 작동 시 명시적 로그 출력
+        if (effectManager != null)
+        {
+            buffMultiplier = effectManager.GetAttackMultiplier(caster);
+            debuffMultiplier = effectManager.GetDefenseMultiplier(decision.MainTarget);
+        }
+        else
+        {
+            Debug.LogWarning($"<color=orange>[CombatResolver] StatusEffectManager가 주입되지 않았습니다! {caster.unitName}의 스킬 위력 연산에 버프/디버프 배율(1.0)이 강제 적용됩니다.</color>");
+        }
 
         // 힐 스킬일 경우 디버프(방어력) 계산을 무시하고, 데미지일 경우만 적용
         int finalMainValue = isHealSkill ?
@@ -43,8 +58,11 @@ public class CombatResolver
         {
             foreach (var sub in decision.SubTargets)
             {
-                // 서브 타겟 본인만의 방어력/디버프 배율을 새로 가져옵니다.
-                float subDebuffMultiplier = effectManager.GetDefenseMultiplier(sub);
+                float subDebuffMultiplier = 1.0f;
+                if (effectManager != null)
+                {
+                    subDebuffMultiplier = effectManager.GetDefenseMultiplier(sub);
+                }
 
                 // 순수 위력(baseValue) * 시전자 공업 * 서브타겟 방업 * 서브타겟 배율(0.5 등)
                 int finalSubValue = isHealSkill ?
