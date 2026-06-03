@@ -118,6 +118,14 @@ public class SimulationUIManager : MonoBehaviour
             PlayerUnitPanel panel = obj.GetComponent<PlayerUnitPanel>();
             if (panel != null)
             {
+                // 매니저가 중재자(Mediator) 역할을 수행하여 중복 배치를 검증하는 함수를 주입합니다.
+                panel.OnValidateUnit = (unit) =>
+                {
+                    foreach (var p in activePlayerPanels)
+                        if (p != panel && p.GetSelectedUnit() == unit) return false;
+                    return true;
+                };
+
                 panel.Initialize(playerSideUnits); // 분리된 아군 리스트 전달
                 activePlayerPanels.Add(panel);
             }
@@ -130,6 +138,15 @@ public class SimulationUIManager : MonoBehaviour
             EnemyUnitPanel panel = obj.GetComponent<EnemyUnitPanel>();
             if (panel != null)
             {
+                //시뮬레이션에서 잡몹 중복 선택을 위해 주석처리 했음.
+                //// 적군도 동일하게 중복 검증 로직 주입
+                //panel.OnValidateUnit = (unit) =>
+                //{
+                //    foreach (var p in activeEnemyPanels)
+                //        if (p != panel && p.GetSelectedUnit() == unit) return false;
+                //    return true;
+                //};
+
                 panel.Initialize(enemySideUnits); // 분리된 적군 리스트 전달
                 activeEnemyPanels.Add(panel);
             }
@@ -160,10 +177,25 @@ public class SimulationUIManager : MonoBehaviour
         // 2. PartyRoster 세팅 데이터 추출 및 주입
         // (기획자님이 말씀하신 SetPlayerParty, SetEnemyParty, SetUnitSkills 호출 규격 준수)
         List<UnitData> playerList = new List<UnitData>();
-        foreach (var p in activePlayerPanels) playerList.Add(p.GetSelectedUnit());
+        foreach (var p in activePlayerPanels)
+        {
+            UnitData u = p.GetSelectedUnit();
+            if (u != null) playerList.Add(u); // "--- 선택 안함 ---" 필터링
+        }
 
         List<UnitData> enemyList = new List<UnitData>();
-        foreach (var e in activeEnemyPanels) enemyList.Add(e.GetSelectedUnit());
+        foreach (var e in activeEnemyPanels)
+        {
+            UnitData u = e.GetSelectedUnit();
+            if (u != null) enemyList.Add(u); // "--- 선택 안함 ---" 필터링
+        }
+
+        // 양 진영 중 한 곳이라도 아무도 안 골랐다면 전투 거부
+        if (playerList.Count == 0 || enemyList.Count == 0)
+        {
+            Debug.LogWarning("<color=orange>[UI 매니저] 아군과 적군 진형에 각각 최소 1명 이상의 유닛을 배치해야 합니다.</color>");
+            return;
+        }
 
         partyRoster.SetPlayerParty(playerList);
         partyRoster.SetEnemyParty(enemyList);

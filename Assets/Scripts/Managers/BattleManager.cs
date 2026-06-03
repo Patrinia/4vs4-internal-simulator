@@ -217,15 +217,15 @@ public class BattleManager : MonoBehaviour
             {
                 yield return StartCoroutine(ExecuteRandomAction(unit));
             }
-            else if (unit.isPlayer)
+            // 소속(isPlayer)이 아닌 뇌의 종류(타입)를 검사하여 진정한 다형성을 확보합니다.
+            else if (unit.Brain is BaseAIBrain)
             {
-                // 시뮬레이션에서는 유닛이 BotBrain을 가지므로 이 분기로 들어오지 않습니다.
-                // 본 게임에서만 PlayerBrain을 가진 유닛이 이 코드를 타게 됩니다.
-                yield return StartCoroutine(WaitForPlayerAction(unit));
+                yield return StartCoroutine(ExecuteAIAction(unit));
             }
             else
             {
-                yield return StartCoroutine(ExecuteAIAction(unit));
+                // BaseAIBrain을 상속받지 않은 외부 뇌(추후 구현될 HumanBrain 등)일 경우에만 입력을 대기합니다.
+                yield return StartCoroutine(WaitForPlayerAction(unit));
             }
         }
 
