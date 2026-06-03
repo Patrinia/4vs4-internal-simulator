@@ -21,7 +21,8 @@ public class StatusEffectManager
         foreach (var mod in skill.attributeModifiers)
         {
             target.ModifyAttribute(mod.type, mod.amount);
-            Debug.Log($"<color=cyan>[기믹] {target.unitName}의 {mod.type} 속성이 {mod.amount}만큼 변화했습니다.</color>");
+            // [업데이트] 속성 변동 이벤트를 버스로 송출합니다. (Broadcast 사용)
+            BattleLogEvents.BroadcastAttributeModified(target, mod.type, mod.amount);
         }
 
         // 2. 상태이상 팩토리 (정적 데이터를 동적 객체로)
@@ -42,7 +43,8 @@ public class StatusEffectManager
                 {
                     existingEffect.value += effectData.value;        // 스택제: 오직 위력(개수)만 합산
                 }
-                Debug.Log($"<color=magenta>[상태이상 중첩] {target.unitName}의 {effectData.type} 중첩 병합! (총 위력:{existingEffect.value}, 지속:{existingEffect.duration})</color>");
+                // [업데이트] 상태이상 중첩 병합 이벤트를 송출합니다. (Broadcast 사용)
+                BattleLogEvents.BroadcastStatusEffectMerged(target, effectData.type, existingEffect.value, existingEffect.duration);
             }
             else
             {
@@ -52,7 +54,8 @@ public class StatusEffectManager
                 {
                     newEffect.Init(caster, target, effectData);
                     target.activeEffects.Add(newEffect);
-                    Debug.Log($"<color=magenta>[상태이상] {target.unitName}에게 {effectData.type}(위력:{effectData.value}) 부여됨!</color>");
+                    // [업데이트] 신규 상태이상 부여 이벤트를 송출합니다. (Broadcast 사용)
+                    BattleLogEvents.BroadcastStatusEffectApplied(target, effectData.type, effectData.value);
                 }
             }
         }
@@ -152,10 +155,12 @@ public class StatusEffectManager
                 if ((yyValue >= 0 && yyValue <= 10) || (yyValue >= 90 && yyValue <= 100))
                 {
                     string stateName = yyValue <= 10 ? "음기 침식" : "양기 과다";
-                    Debug.Log($"<color=cyan><b>[{unit.unitName}]</b>의 {stateName} 상태가 해제되어 수치가 기준점(50)으로 복귀합니다.</color>");
 
                     // 수치를 완벽한 조화(50)로 강제 리셋
                     unit.currentAttributes[AttributeType.YinYang] = 50;
+
+                    // [업데이트] 침식 구제(기준점 복귀) 이벤트를 송출합니다. (Broadcast 사용)
+                    BattleLogEvents.BroadcastErosionReverted(unit, stateName);
                 }
             }
         }
@@ -185,11 +190,11 @@ public class StatusEffectManager
             if (effect.isExpired)
             {
                 unit.activeEffects.RemoveAt(i);
-                Debug.Log($"<color=grey>[해제] {unit.unitName}의 {effect.type} 상태가 해제되었습니다.</color>");
+                // [업데이트] 상태이상 만료/해제 이벤트를 송출합니다. (Broadcast 사용)
+                BattleLogEvents.BroadcastStatusEffectExpired(unit, effect.type);
             }
         }
     }
-
 }
 
 // ========================================================================

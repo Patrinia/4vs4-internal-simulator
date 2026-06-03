@@ -46,7 +46,8 @@ public class CombatResolver
         // ====================================================
         if (!isHealSkill && !isAggressiveSkill)
         {
-            Debug.Log($"<color=yellow>[{caster.unitName}]가 [{decision.MainTarget.unitName}]에게 기믹/유틸리티({skill.skillName})을 시전했습니다.</color>");
+            // [업데이트] 이벤트 버스로 유틸리티 시전 시점과 데이터를 쏘아 보냅니다. (Broadcast 사용)
+            BattleLogEvents.BroadcastUtilityCasted(caster, decision.MainTarget, skill);
 
             // HP 조작 없이 상태이상 매니저만 즉시 호출
             if (effectManager != null)
@@ -82,6 +83,7 @@ public class CombatResolver
         }
         else
         {
+            // 이 로그는 전투 로그가 아닌 개발자용 시스템 경고(Warning)이므로 문자열 보존
             Debug.LogWarning($"<color=orange>[CombatResolver] StatusEffectManager가 주입되지 않았습니다! {caster.unitName}의 스킬 위력 연산에 버프/디버프 배율(1.0)이 강제 적용됩니다.</color>");
         }
 
@@ -121,13 +123,15 @@ public class CombatResolver
         if (skill.skillTendencies.Contains(TendencyType.Heal))
         {
             target.HealHP(value);
-            Debug.Log($"<color=green>[{caster.unitName}]가 [{target.unitName}]({targetTypeStr})의 체력을 {value}만큼 회복시켰습니다!</color>");
+            // [업데이트] 치유 로그 이벤트 발송 (Broadcast 사용)
+            BattleLogEvents.BroadcastHealed(caster, target, value, targetTypeStr);
         }
         else
         {
             // 그 외의 공격형/제어형 등은 데미지로 판별하여 깎습니다.
             target.TakeDamage(value);
-            Debug.Log($"<color=red>[{caster.unitName}]가 [{target.unitName}]({targetTypeStr})에게 {value}의 데미지를 입혔습니다!</color>");
+            // [업데이트] 데미지 로그 이벤트 발송 (Broadcast 사용)
+            BattleLogEvents.BroadcastDamageDealt(caster, target, value, targetTypeStr);
         }
 
         // 5. 데미지/힐 적용 후, 스킬에 담긴 부가 효과(상태이상, 게이지 변동) 처리

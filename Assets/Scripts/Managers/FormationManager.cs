@@ -99,7 +99,7 @@ public class FormationManager
             if (unit.isPlayer) playerSlots[index] = null;
             else enemySlots[index] = null;
 
-            // [업데이트] 진형 이탈 시 인덱스 초기화
+            // 진형 이탈 시 인덱스 초기화
             unit.positionIndex = -1;
         }
     }
@@ -122,7 +122,7 @@ public class FormationManager
             targetArray[indexA] = targetArray[indexB];
             targetArray[indexB] = temp;
 
-            // [업데이트] 캐싱된 positionIndex 데이터도 서로 교환합니다.
+            // 캐싱된 positionIndex 데이터도 서로 교환합니다.
             unitA.positionIndex = indexB;
             unitB.positionIndex = indexA;
         }
@@ -140,7 +140,7 @@ public class FormationManager
     {
         if (unit == null || unit.isDead) return;
 
-        // [업데이트 복구] 진형 이탈 방지 및 벽면 넉백 보정(Clamping)
+        // 진형 이탈 방지 및 벽면 넉백 보정(Clamping)
         // AI의 ValidRange 오프셋 연산 결과나 넉백/당기기가 맵 밖을 가리켜도 가장 끝 슬롯으로 안전하게 고정시킵니다.
         targetIndex = Mathf.Clamp(targetIndex, 0, MAX_SLOTS - 1);
 
@@ -158,13 +158,17 @@ public class FormationManager
 
             // 캐싱된 인덱스 갱신
             unit.positionIndex = targetIndex;
-            Debug.Log($"<color=white>[진형 변경] {unit.unitName}이(가) 빈칸({targetIndex}번 슬롯)으로 이동했습니다.</color>");
+
+            // [업데이트] 진형 빈칸 이동 이벤트를 송출합니다. (Broadcast 사용)
+            BattleLogEvents.BroadcastUnitMoved(unit, targetIndex);
         }
         else
         {
             // 2. 목표 지점에 다른 유닛이 있을 경우: 기존 Swap 로직 재사용
             SwapUnits(unit, targetOccupant);
-            Debug.Log($"<color=white>[진형 변경] {unit.unitName}이(가) {targetOccupant.unitName}와(과) 자리를 교환했습니다.</color>");
+
+            // [업데이트] 진형 자리 교환(Swap) 이벤트를 송출합니다. (Broadcast 사용)
+            BattleLogEvents.BroadcastUnitSwapped(unit, targetOccupant);
         }
     }
 

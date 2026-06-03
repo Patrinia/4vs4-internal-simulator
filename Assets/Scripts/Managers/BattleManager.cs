@@ -70,13 +70,14 @@ public class BattleManager : MonoBehaviour
         InitializeBattlefield();
         statusManager.OnBattleStart(allUnits); // 최초 1회 발동
 
-        Debug.Log("<color=green><b>[BattleManager]</b> 외부 명령으로 엔진 점화! 전투를 시작합니다.</color>");
+        // [업데이트] 엔진 점화 로그 이벤트 발송 (Broadcast 사용)
+        BattleLogEvents.BroadcastBattleStarted();
 
         // 3. 코어 루프 가동
         StartCoroutine(BattleLoop());
     }
 
-    // [신규 업데이트] SimulationManager의 Stop 버튼과 연동되어 전투 코루틴을 강제 파괴하는 방어선 API
+    // SimulationManager의 Stop 버튼과 연동되어 전투 코루틴을 강제 파괴하는 방어선 API
     /// <summary>
     /// 외부에서 시뮬레이션을 강제 중단할 때 호출하여, 내부 전투 루프 코루틴을 즉시 멈춥니다.
     /// </summary>
@@ -84,6 +85,8 @@ public class BattleManager : MonoBehaviour
     {
         StopAllCoroutines();
         CleanupEventSubscriptions(); // 강제 종료 시 메모리 누수 방지
+
+        // [보존] 이 로그는 전투 로그가 아닌 시스템 강제 정지 경고이므로 보존합니다.
         Debug.Log("<color=red><b>[BattleManager]</b> 연쇄 정지 명령 수신: 진행 중인 전투 루프 코루틴이 강제 종료되었습니다.</color>");
     }
 
@@ -105,6 +108,7 @@ public class BattleManager : MonoBehaviour
             }
         }
 
+        // [보존] 개발자용 시스템 초기화 확인 로그이므로 보존합니다.
         Debug.Log("<b>[BattleManager]</b> 유닛들이 진형 체스판에 성공적으로 배치되었습니다.");
     }
 
@@ -136,7 +140,8 @@ public class BattleManager : MonoBehaviour
         while (CheckBattleContinue())
         {
             currentRound++;
-            Debug.Log($"<color=cyan>=== 라운드 {currentRound} 시작 ===</color>");
+            // [업데이트] 라운드 시작 이벤트 발송 (Broadcast 사용)
+            BattleLogEvents.BroadcastRoundStarted(currentRound);
 
             // [Phase 1: 라운드 시작]
             statusManager.OnRoundStart(allUnits);
@@ -159,11 +164,14 @@ public class BattleManager : MonoBehaviour
             statusManager.OnRoundEnd(allUnits);
             ProcessDeathQueue(); // [Sync Point 5] 라운드 종료 시 도트딜/기믹 사망자 정리
 
-            Debug.Log($"<color=orange>=== 라운드 {currentRound} 종료 ===</color>");
+            // [업데이트] 라운드 종료 이벤트 발송 (Broadcast 사용)
+            BattleLogEvents.BroadcastRoundEnded(currentRound);
+
             yield return new WaitForSeconds(1.0f);
         }
 
-        Debug.Log("<color=red><b>[BattleManager] 전투가 완전히 종료되었습니다. 결과를 집계하고 방송을 송출합니다.</b></color>");
+        // [업데이트] 전투 완전히 종료 이벤트 발송 (Broadcast 사용)
+        BattleLogEvents.BroadcastBattleEnded();
 
         // 전투 종료 시점에 플레이어측 유닛들의 실시간 생존/속성 데이터를 추출하여 PartyRoster 장부에 덮어쓰기(Save)
         if (PartyRoster.Instance != null)
@@ -191,7 +199,8 @@ public class BattleManager : MonoBehaviour
 
     private IEnumerator ProcessTurn(UnitControl unit)
     {
-        Debug.Log($"[{unit.unitName}] 턴 시작.");
+        // [업데이트] 턴 시작 이벤트 발송 (Broadcast 사용)
+        BattleLogEvents.BroadcastTurnStarted(unit);
 
         // [(Track B)] 턴 시작 시 침식 과다(0 미만, 100 초과) 여부를 가장 먼저 검사합니다.
         // 팀원이 힐/게이지 조작으로 구제해주지 못했다면 이 시점에 즉사(턴 스킵)합니다.
@@ -209,7 +218,8 @@ public class BattleManager : MonoBehaviour
 
         if (unit.IsUnableToAct())
         {
-            Debug.Log($"[{unit.unitName}] 행동 불가 상태입니다. 턴을 건너뜁니다.");
+            // [업데이트] 턴 스킵 이벤트 발송 (Broadcast 사용)
+            BattleLogEvents.BroadcastTurnSkipped(unit, "행동 불가");
         }
         else
         {
@@ -236,7 +246,8 @@ public class BattleManager : MonoBehaviour
 
         ProcessDeathQueue(); // [Sync Point 4] 턴 종료 도트딜/기믹 사망자 정리
 
-        Debug.Log($"[{unit.unitName}] 턴 종료.");
+        // [업데이트] 턴 종료 이벤트 발송 (Broadcast 사용)
+        BattleLogEvents.BroadcastTurnEnded(unit);
     }
 
     // ========================================================================
@@ -244,12 +255,14 @@ public class BattleManager : MonoBehaviour
     // ========================================================================
     private IEnumerator WaitForPlayerAction(UnitControl unit)
     {
+        // [보존] 개발자/시스템용 입력 대기 알림이므로 보존합니다.
         Debug.Log("플레이어의 조작(입력)을 대기 중입니다...");
         yield return new WaitForSeconds(1.0f);
     }
 
     private IEnumerator ExecuteAIAction(UnitControl unit)
     {
+        // [보존] 연산 딜레이 알림 시스템 로그 보존
         Debug.Log($"{unit.unitName} (AI)가 전황을 분석 중입니다...");
         yield return new WaitForSeconds(0.6f);
 
@@ -261,7 +274,8 @@ public class BattleManager : MonoBehaviour
 
         if (unit.Brain == null || usableSkills.Count == 0)
         {
-            Debug.Log($"[{unit.unitName}] 행동 불가: 사용 가능한 스킬이 없거나 두뇌가 없습니다.");
+            // [업데이트] 지능 부재 또는 스킬 부재로 인한 턴 스킵 (Broadcast 사용)
+            BattleLogEvents.BroadcastTurnSkipped(unit, "스킬 부재 혹은 두뇌 상실");
             yield break;
         }
 
@@ -269,11 +283,14 @@ public class BattleManager : MonoBehaviour
 
         if (decision == null || decision.SelectedSkill == null || decision.MainTarget == null)
         {
-            Debug.Log($"[{unit.unitName}] 판단 결과: 현재 상황에 유리한 행동이 없어 방어 태세를 취합니다 (턴 스킵).");
+            // [업데이트] 방어 태세(스킬 사용 포기)로 인한 턴 스킵 (Broadcast 사용)
+            BattleLogEvents.BroadcastTurnSkipped(unit, "방어 태세(유리한 행동 없음)");
             yield break;
         }
 
-        Debug.Log($"<color=yellow>[{unit.unitName}] (이)가 [{decision.SelectedSkill.skillName}] 스킬을 시전!</color>");
+        // [업데이트] 스킬 시전 알림 이벤트 발송 (Broadcast 사용)
+        BattleLogEvents.BroadcastSkillCasted(unit, decision.MainTarget, decision.SelectedSkill);
+
         yield return new WaitForSeconds(0.5f);
 
         combatResolver.ExecuteAction(unit, decision);
@@ -282,7 +299,8 @@ public class BattleManager : MonoBehaviour
 
     private IEnumerator ExecuteRandomAction(UnitControl unit)
     {
-        Debug.Log("<color=red>유닛이 제어권을 상실했습니다! 무작위로 행동합니다.</color>");
+        // [업데이트] 제어권 상실 알림 이벤트 발송 (Broadcast 사용)
+        BattleLogEvents.BroadcastRandomActionForced(unit);
         yield return new WaitForSeconds(0.6f);
     }
 
@@ -300,7 +318,8 @@ public class BattleManager : MonoBehaviour
             if (deadUnit == null || deadUnit.isDead) continue;
 
             deadUnit.isDead = true;
-            Debug.Log($"<color=black><b>[사망]</b> {deadUnit.unitName}이(가) 쓰러졌습니다!</color>");
+            // [업데이트] 사망 알림 이벤트 발송 (Broadcast 사용)
+            BattleLogEvents.BroadcastUnitDied(deadUnit);
 
             // 1. 논리적 진형(체스판)에서 이탈시켜 빈칸 확보 (Summon 기믹 대비)
             FormationManager.RemoveUnit(deadUnit);

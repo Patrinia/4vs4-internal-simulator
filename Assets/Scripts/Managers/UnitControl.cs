@@ -233,7 +233,8 @@ public class UnitControl : MonoBehaviour
         {
             if (yinYangValue < 0 || yinYangValue > 100)
             {
-                Debug.Log($"<color=purple>[침식 붕괴] {unitName}의 음/양 수치가 한계를 돌파({yinYangValue})하여 특수 사망합니다!</color>");
+                // [업데이트] 침식 특수 사망 이벤트를 송출합니다. (Broadcast 사용)
+                BattleLogEvents.BroadcastErosionDeath(this, yinYangValue);
                 OnDeathConditionMet?.Invoke(this);
                 return true;
             }
