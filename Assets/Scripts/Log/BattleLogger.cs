@@ -1,4 +1,6 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
+using System.Linq;
 
 // ====================================================
 // [BattleLogger.cs]
@@ -13,13 +15,15 @@ public class BattleLogger : MonoBehaviour
 
     private void OnEnable()
     {
-        // 이벤트 구독 (Subscribe)
         BattleLogEvents.OnBattleStarted += HandleBattleStarted;
         BattleLogEvents.OnBattleEnded += HandleBattleEnded;
         BattleLogEvents.OnRoundStarted += HandleRoundStarted;
         BattleLogEvents.OnRoundEnded += HandleRoundEnded;
         BattleLogEvents.OnTurnStarted += HandleTurnStarted;
         BattleLogEvents.OnTurnEnded += HandleTurnEnded;
+
+        BattleLogEvents.OnBattleTimeout += HandleBattleTimeout;
+        BattleLogEvents.OnTurnOrderCalculated += HandleTurnOrderCalculated;
 
         BattleLogEvents.OnTurnSkipped += HandleTurnSkipped;
         BattleLogEvents.OnRandomActionForced += HandleRandomActionForced;
@@ -43,13 +47,15 @@ public class BattleLogger : MonoBehaviour
 
     private void OnDisable()
     {
-        // 메모리 누수 방지를 위한 이벤트 구독 해제
         BattleLogEvents.OnBattleStarted -= HandleBattleStarted;
         BattleLogEvents.OnBattleEnded -= HandleBattleEnded;
         BattleLogEvents.OnRoundStarted -= HandleRoundStarted;
         BattleLogEvents.OnRoundEnded -= HandleRoundEnded;
         BattleLogEvents.OnTurnStarted -= HandleTurnStarted;
         BattleLogEvents.OnTurnEnded -= HandleTurnEnded;
+
+        BattleLogEvents.OnBattleTimeout -= HandleBattleTimeout;
+        BattleLogEvents.OnTurnOrderCalculated -= HandleTurnOrderCalculated;
 
         BattleLogEvents.OnTurnSkipped -= HandleTurnSkipped;
         BattleLogEvents.OnRandomActionForced -= HandleRandomActionForced;
@@ -73,7 +79,6 @@ public class BattleLogger : MonoBehaviour
 
     // ========================================================================
     // [로그 텍스트 가공 및 출력부]
-    // IsLoggingEnabled가 false일 경우 즉시 return하여 문자열 연산 부하(GC)를 차단합니다.
     // ========================================================================
 
     private void HandleBattleStarted()
@@ -86,6 +91,23 @@ public class BattleLogger : MonoBehaviour
     {
         if (!IsLoggingEnabled) return;
         Debug.Log("<color=red><b>[전투 종료]</b> 전투가 완전히 종료되었습니다.</color>");
+    }
+
+    // 타임아웃 출력
+    private void HandleBattleTimeout(int round)
+    {
+        if (!IsLoggingEnabled) return;
+        Debug.Log($"<color=red><b>[타임아웃]</b> {round}라운드 초과! 무한 루프를 방지하기 위해 전투를 무승부로 강제 종료합니다.</color>");
+    }
+
+    // 턴 대기열 순서 출력
+    private void HandleTurnOrderCalculated(List<UnitControl> turnOrder)
+    {
+        if (!IsLoggingEnabled || turnOrder == null || turnOrder.Count == 0) return;
+
+        // 유닛들의 이름을 'A -> B -> C' 형태로 예쁘게 묶습니다.
+        string orderStr = string.Join(" -> ", turnOrder.Select(u => u.unitName));
+        Debug.Log($"<color=white><b>[턴 순서]</b> {orderStr}</color>");
     }
 
     private void HandleRoundStarted(int round)

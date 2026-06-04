@@ -26,6 +26,9 @@ public class BattleManager : MonoBehaviour
     private Queue<UnitControl> turnQueue = new Queue<UnitControl>(); // 이번 라운드의 턴 대기열
     private int currentRound = 0; // 현재 라운드 수
 
+    // 힐/무적기 과다로 인한 무한 루프를 방지하는 라운드 제한 (외부에서 주입됨. 0 이하면 무제한)
+    private int currentMaxRounds = 100;
+
     // 지연된 사망 처리를 위한 중앙 대기열 (중복 방지를 위해 HashSet 사용)
     private HashSet<UnitControl> deathQueue = new HashSet<UnitControl>();
 
@@ -56,13 +59,16 @@ public class BattleManager : MonoBehaviour
 
     /// <summary>
     /// 외부 매니저(SimulationManager, GameFlowManager)가 호출하는 수동 점화 스위치입니다.
+    /// maxRounds 파라미터를 통해 전투의 최대 길이를 외부에서 주입받습니다.
     /// </summary>
     /// <param name="participatingUnits">SpawnManager가 세팅을 마친 이번 전투의 참여 유닛 전체 리스트</param>
-    public void StartBattle(List<UnitControl> participatingUnits)
+    /// <param name="maxRounds">전투 강제 종료 기준 라운드 (기본값 100, 0 이하 입력 시 무제한)</param>
+    public void StartBattle(List<UnitControl> participatingUnits, int maxRounds = 100)
     {
-        // 1. 전투 데이터 초기화
+        // 1. 전투 데이터 및 규칙 초기화
         allUnits = new List<UnitControl>(participatingUnits);
         currentRound = 0;
+        currentMaxRounds = maxRounds; // 외부 규칙 주입
         turnQueue.Clear();
         deathQueue.Clear(); // 사망 대기열 초기화
 
@@ -70,7 +76,7 @@ public class BattleManager : MonoBehaviour
         InitializeBattlefield();
         statusManager.OnBattleStart(allUnits); // 최초 1회 발동
 
-        // [업데이트] 엔진 점화 로그 이벤트 발송 (Broadcast 사용)
+        // 엔진 점화 로그 이벤트 발송 (Broadcast 사용)
         BattleLogEvents.BroadcastBattleStarted();
 
         // 3. 코어 루프 가동
@@ -86,7 +92,7 @@ public class BattleManager : MonoBehaviour
         StopAllCoroutines();
         CleanupEventSubscriptions(); // 강제 종료 시 메모리 누수 방지
 
-        // [보존] 이 로그는 전투 로그가 아닌 시스템 강제 정지 경고이므로 보존합니다.
+        // 이 로그는 전투 로그가 아닌 시스템 강제 정지 경고이므로 보존합니다.
         Debug.Log("<color=red><b>[BattleManager]</b> 연쇄 정지 명령 수신: 진행 중인 전투 루프 코루틴이 강제 종료되었습니다.</color>");
     }
 
@@ -108,7 +114,7 @@ public class BattleManager : MonoBehaviour
             }
         }
 
-        // [보존] 개발자용 시스템 초기화 확인 로그이므로 보존합니다.
+        // 개발자용 시스템 초기화 확인 로그이므로 보존합니다.
         Debug.Log("<b>[BattleManager]</b> 유닛들이 진형 체스판에 성공적으로 배치되었습니다.");
     }
 
@@ -139,8 +145,15 @@ public class BattleManager : MonoBehaviour
         // 전투가 계속 진행 가능한지 확인 (전멸 확인)
         while (CheckBattleContinue())
         {
+            // 최대 라운드 도달 시 강제 무승부 처리 (Timeout, 0 이하일 경우 무제한 전투)
+            if (currentMaxRounds > 0 && currentRound >= currentMaxRounds)
+            {
+                BattleLogEvents.BroadcastBattleTimeout(currentRound);
+                break; // while 루프를 탈출하여 즉시 전투 종료로 직행합니다.
+            }
+
             currentRound++;
-            // [업데이트] 라운드 시작 이벤트 발송 (Broadcast 사용)
+            // 라운드 시작 이벤트 발송 (Broadcast 사용)
             BattleLogEvents.BroadcastRoundStarted(currentRound);
 
             // [Phase 1: 라운드 시작]
@@ -148,6 +161,9 @@ public class BattleManager : MonoBehaviour
             ProcessDeathQueue(); // [Sync Point 1] 라운드 시작 시 도트딜 사망자 정리
 
             turnQueue = turnSorter.BuildTurnQueue(GetAliveUnits());
+
+            // 턴 대기열이 완성된 직후, 이를 스냅샷으로 찍어 이벤트 버스로 쏘아 보냅니다.
+            BattleLogEvents.BroadcastTurnOrderCalculated(turnQueue.ToList());
 
             // [Phase 2: 턴 반복 루프]
             while (turnQueue.Count > 0)
@@ -164,13 +180,13 @@ public class BattleManager : MonoBehaviour
             statusManager.OnRoundEnd(allUnits);
             ProcessDeathQueue(); // [Sync Point 5] 라운드 종료 시 도트딜/기믹 사망자 정리
 
-            // [업데이트] 라운드 종료 이벤트 발송 (Broadcast 사용)
+            // 라운드 종료 이벤트 발송 (Broadcast 사용)
             BattleLogEvents.BroadcastRoundEnded(currentRound);
 
             yield return new WaitForSeconds(1.0f);
         }
 
-        // [업데이트] 전투 완전히 종료 이벤트 발송 (Broadcast 사용)
+        // 전투 완전히 종료 이벤트 발송 (Broadcast 사용)
         BattleLogEvents.BroadcastBattleEnded();
 
         // 전투 종료 시점에 플레이어측 유닛들의 실시간 생존/속성 데이터를 추출하여 PartyRoster 장부에 덮어쓰기(Save)
@@ -199,7 +215,7 @@ public class BattleManager : MonoBehaviour
 
     private IEnumerator ProcessTurn(UnitControl unit)
     {
-        // [업데이트] 턴 시작 이벤트 발송 (Broadcast 사용)
+        // 턴 시작 이벤트 발송 (Broadcast 사용)
         BattleLogEvents.BroadcastTurnStarted(unit);
 
         // [(Track B)] 턴 시작 시 침식 과다(0 미만, 100 초과) 여부를 가장 먼저 검사합니다.
@@ -218,7 +234,7 @@ public class BattleManager : MonoBehaviour
 
         if (unit.IsUnableToAct())
         {
-            // [업데이트] 턴 스킵 이벤트 발송 (Broadcast 사용)
+            // 턴 스킵 이벤트 발송 (Broadcast 사용)
             BattleLogEvents.BroadcastTurnSkipped(unit, "행동 불가");
         }
         else
@@ -246,7 +262,7 @@ public class BattleManager : MonoBehaviour
 
         ProcessDeathQueue(); // [Sync Point 4] 턴 종료 도트딜/기믹 사망자 정리
 
-        // [업데이트] 턴 종료 이벤트 발송 (Broadcast 사용)
+        // 턴 종료 이벤트 발송 (Broadcast 사용)
         BattleLogEvents.BroadcastTurnEnded(unit);
     }
 
@@ -255,14 +271,14 @@ public class BattleManager : MonoBehaviour
     // ========================================================================
     private IEnumerator WaitForPlayerAction(UnitControl unit)
     {
-        // [보존] 개발자/시스템용 입력 대기 알림이므로 보존합니다.
+        // 개발자/시스템용 입력 대기 알림이므로 보존합니다.
         Debug.Log("플레이어의 조작(입력)을 대기 중입니다...");
         yield return new WaitForSeconds(1.0f);
     }
 
     private IEnumerator ExecuteAIAction(UnitControl unit)
     {
-        // [보존] 연산 딜레이 알림 시스템 로그 보존
+        // 연산 딜레이 알림 시스템 로그 보존
         Debug.Log($"{unit.unitName} (AI)가 전황을 분석 중입니다...");
         yield return new WaitForSeconds(0.6f);
 
@@ -274,7 +290,7 @@ public class BattleManager : MonoBehaviour
 
         if (unit.Brain == null || usableSkills.Count == 0)
         {
-            // [업데이트] 지능 부재 또는 스킬 부재로 인한 턴 스킵 (Broadcast 사용)
+            // 지능 부재 또는 스킬 부재로 인한 턴 스킵 (Broadcast 사용)
             BattleLogEvents.BroadcastTurnSkipped(unit, "스킬 부재 혹은 두뇌 상실");
             yield break;
         }
@@ -283,12 +299,12 @@ public class BattleManager : MonoBehaviour
 
         if (decision == null || decision.SelectedSkill == null || decision.MainTarget == null)
         {
-            // [업데이트] 방어 태세(스킬 사용 포기)로 인한 턴 스킵 (Broadcast 사용)
+            // 방어 태세(스킬 사용 포기)로 인한 턴 스킵 (Broadcast 사용)
             BattleLogEvents.BroadcastTurnSkipped(unit, "방어 태세(유리한 행동 없음)");
             yield break;
         }
 
-        // [업데이트] 스킬 시전 알림 이벤트 발송 (Broadcast 사용)
+        // 스킬 시전 알림 이벤트 발송 (Broadcast 사용)
         BattleLogEvents.BroadcastSkillCasted(unit, decision.MainTarget, decision.SelectedSkill);
 
         yield return new WaitForSeconds(0.5f);
@@ -299,7 +315,7 @@ public class BattleManager : MonoBehaviour
 
     private IEnumerator ExecuteRandomAction(UnitControl unit)
     {
-        // [업데이트] 제어권 상실 알림 이벤트 발송 (Broadcast 사용)
+        // 제어권 상실 알림 이벤트 발송 (Broadcast 사용)
         BattleLogEvents.BroadcastRandomActionForced(unit);
         yield return new WaitForSeconds(0.6f);
     }
@@ -318,7 +334,7 @@ public class BattleManager : MonoBehaviour
             if (deadUnit == null || deadUnit.isDead) continue;
 
             deadUnit.isDead = true;
-            // [업데이트] 사망 알림 이벤트 발송 (Broadcast 사용)
+            // 사망 알림 이벤트 발송 (Broadcast 사용)
             BattleLogEvents.BroadcastUnitDied(deadUnit);
 
             // 1. 논리적 진형(체스판)에서 이탈시켜 빈칸 확보 (Summon 기믹 대비)

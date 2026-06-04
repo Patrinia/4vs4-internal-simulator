@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 // ====================================================
@@ -29,6 +30,13 @@ public static class BattleLogEvents
 
     public static event Action<UnitControl> OnTurnEnded;
     public static void BroadcastTurnEnded(UnitControl unit) => OnTurnEnded?.Invoke(unit);
+
+    // 무한 루프 강제 종료(타임아웃) 및 턴 행동 순서 이벤트
+    public static event Action<int> OnBattleTimeout;
+    public static void BroadcastBattleTimeout(int round) => OnBattleTimeout?.Invoke(round);
+
+    public static event Action<List<UnitControl>> OnTurnOrderCalculated;
+    public static void BroadcastTurnOrderCalculated(List<UnitControl> turnOrder) => OnTurnOrderCalculated?.Invoke(turnOrder);
 
     // ----------------------------------------------------
     // [2] 상태 및 제어권 (Status & Control)

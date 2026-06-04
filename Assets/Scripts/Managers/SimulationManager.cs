@@ -27,6 +27,9 @@ public class SimulationManager : MonoBehaviour
     public int loseCount = 0;
     public int drawCount = 0;
 
+    // 100라운드를 초과하여 강제 무승부 처리된 타임아웃 횟수 추적
+    public int timeoutCount = 0;
+
     // 현재 진행 중인 전투가 끝났는지 체크하는 플래그 (이벤트로 제어됨)
     private bool isCurrentBattleFinished = false;
 
@@ -74,6 +77,7 @@ public class SimulationManager : MonoBehaviour
         winCount = 0;
         loseCount = 0;
         drawCount = 0;
+        timeoutCount = 0; // 타임아웃 횟수 초기화
 
         isRunning = true;
         isPaused = false;
@@ -150,7 +154,8 @@ public class SimulationManager : MonoBehaviour
             );
 
             // 2. 엔진 점화!
-            BattleManager.Instance.StartBattle(unitsForThisBattle);
+            // [업데이트] 시뮬레이션 환경에 맞춰 최대 100라운드의 제한 규칙을 명시적으로 주입합니다. (OCP 준수)
+            BattleManager.Instance.StartBattle(unitsForThisBattle, 100);
 
             // 3. BattleManager가 전투 종료 이벤트를 쏠 때까지 루프를 잠시 멈추고 대기
             yield return new WaitUntil(() => isCurrentBattleFinished);
@@ -167,7 +172,8 @@ public class SimulationManager : MonoBehaviour
         // 모든 반복이 정상적으로 끝났을 때
         if (currentSimulations >= targetSimulations)
         {
-            Debug.Log($"<color=cyan>[SimulationManager] 시뮬레이션 완료! (승: {winCount}, 패: {loseCount}, 무: {drawCount})</color>");
+            // 타임아웃 횟수를 시뮬레이션 최종 완료 로그에 포함합니다.
+            Debug.Log($"<color=cyan>[SimulationManager] 시뮬레이션 완료! (승: {winCount}, 패: {loseCount}, 무: {drawCount}, 타임아웃: {timeoutCount})</color>");
             StopSimulation();
         }
     }
@@ -195,6 +201,12 @@ public class SimulationManager : MonoBehaviour
 
         if (playerAlive && !enemyAlive) winCount++;
         else if (!playerAlive && enemyAlive) loseCount++;
-        else drawCount++; // 양측 모두 전멸 등의 무승부 상황
+        else
+        {
+            drawCount++; // 양측 모두 전멸 등의 무승부 상황
+
+            // 무승부이면서 양측 모두 살아있다면 100라운드 초과(Timeout)로 간주하고 기록합니다.
+            if (playerAlive && enemyAlive) timeoutCount++;
+        }
     }
 }
