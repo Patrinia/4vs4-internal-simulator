@@ -77,8 +77,8 @@ public static class BattleLogEvents
     public static event Action<UnitControl, EffectType> OnStatusEffectExpired;       // 만료/해제
     public static void BroadcastStatusEffectExpired(UnitControl target, EffectType type) => OnStatusEffectExpired?.Invoke(target, type);
 
-    public static event Action<UnitControl, string> OnErosionReverted;               // 50으로 기준점 복귀(구제)
-    public static void BroadcastErosionReverted(UnitControl unit, string stateName) => OnErosionReverted?.Invoke(unit, stateName);
+    public static event Action<UnitControl, string> OnCorrosionReverted;               // 50으로 기준점 복귀(구제)
+    public static void BroadcastCorrosionReverted(UnitControl unit, string stateName) => OnCorrosionReverted?.Invoke(unit, stateName);
 
     // ----------------------------------------------------
     // [5] 진형 및 생사 (Formation & Death)
@@ -92,6 +92,6 @@ public static class BattleLogEvents
     public static event Action<UnitControl> OnUnitDied;
     public static void BroadcastUnitDied(UnitControl unit) => OnUnitDied?.Invoke(unit);
 
-    public static event Action<UnitControl, int> OnErosionDeath; // 침식 임계점 돌파 즉사
-    public static void BroadcastErosionDeath(UnitControl unit, int value) => OnErosionDeath?.Invoke(unit, value);
+    public static event Action<UnitControl, int> OnCorrosionDeath; // 침식 임계점 돌파 즉사
+    public static void BroadcastCorrosionDeath(UnitControl unit, int value) => OnCorrosionDeath?.Invoke(unit, value);
 }

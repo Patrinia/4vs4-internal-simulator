@@ -149,19 +149,23 @@ public class StatusEffectManager
         {
             if (unit.isDead) continue; // 사망한 유닛은 연산에서 제외
 
-            if (unit.currentAttributes.TryGetValue(AttributeType.YinYang, out int yyValue))
+            // [업데이트] 수치의 절댓값 범위 대신, 이번 라운드에 자기 턴에서 실제로 기믹 패널티를 소화했는가를 1순위 조건으로 검사합니다.
+            if (unit.CorrosionExperienced)
             {
-                // 음기 침식(0~10) 또는 양기 침식(90~100) 상태인지 확인
-                if ((yyValue >= 0 && yyValue <= 10) || (yyValue >= 90 && yyValue <= 100))
+                if (unit.currentAttributes.TryGetValue(AttributeType.YinYang, out int yyValue))
                 {
-                    string stateName = yyValue <= 10 ? "음기 침식" : "양기 과다";
+                    // 절댓값 범위를 벗어난 언더플로우/오버플로우 수치까지 완벽히 대응하기 위해 50을 기준으로 분기 이름을 판정합니다.
+                    string stateName = yyValue <= 50 ? "음기 침식" : "양기 과다";
 
                     // 수치를 완벽한 조화(50)로 강제 리셋
                     unit.currentAttributes[AttributeType.YinYang] = 50;
 
                     // [업데이트] 침식 구제(기준점 복귀) 이벤트를 송출합니다. (Broadcast 사용)
-                    BattleLogEvents.BroadcastErosionReverted(unit, stateName);
+                    BattleLogEvents.BroadcastCorrosionReverted(unit, stateName);
                 }
+
+                // [업데이트] 라운드가 종료되어 구제 정산이 끝났으므로 다음 세션을 위해 유닛의 플래그를 청소합니다.
+                unit.CorrosionExperienced = false;
             }
         }
 

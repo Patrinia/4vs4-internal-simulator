@@ -5,7 +5,7 @@ using UnityEngine;
 using System.Linq;
 
 // ====================================================
-// [BattleManager.cs] 
+// [BattleManager.cs] 
 // 전투의 시작, 턴 라이프사이클, 진형 관리, 그리고 최종 승패를
 // 총괄하는 게임의 오케스트라 지휘자(Orchestrator) 클래스입니다.
 // ====================================================
@@ -13,7 +13,7 @@ public class BattleManager : MonoBehaviour
 {
     public static BattleManager Instance { get; private set; }
 
-    [Header("시스템 의존성 모음 (순수 C# 전문가들)")]
+    [Header("SYSTEM 의존성 모음 (순수 C# 전문가들)")]
     private ITurnSorter turnSorter;
     private CombatResolver combatResolver;
     private StatusEffectManager statusManager;
@@ -50,7 +50,7 @@ public class BattleManager : MonoBehaviour
         combatResolver = new CombatResolver(statusManager, FormationManager);
     }
 
-    // 기존의 Start() 내부 자동 실행 로직을 제거했습니다. 
+    // 기존의 Start() 내부 자동 실행 로직을 제거했습니다. 
     // 이제 BattleManager는 스스로 전투를 시작하지 않습니다. (수동 점화 대기)
 
     // ========================================================================
@@ -92,7 +92,7 @@ public class BattleManager : MonoBehaviour
         StopAllCoroutines();
         CleanupEventSubscriptions(); // 강제 종료 시 메모리 누수 방지
 
-        // 이 로그는 전투 로그가 아닌 시스템 강제 정지 경고이므로 보존합니다.
+        // 이 로그 is 전투 로그가 아닌 시스템 강제 정지 경고이므로 보존합니다.
         Debug.Log("<color=red><b>[BattleManager]</b> 연쇄 정지 명령 수신: 진행 중인 전투 루프 코루틴이 강제 종료되었습니다.</color>");
     }
 
@@ -174,6 +174,12 @@ public class BattleManager : MonoBehaviour
                 if (currentUnit == null || currentUnit.isDead) continue;
 
                 yield return StartCoroutine(ProcessTurn(currentUnit));
+
+                // 개별 턴 종료 직후 한쪽 진영이 완전히 전멸했는지 검사하여 유령 턴 행동을 차단
+                if (!CheckBattleContinue())
+                {
+                    break;
+                }
             }
 
             // [Phase 3: 라운드 종료]
@@ -220,7 +226,7 @@ public class BattleManager : MonoBehaviour
 
         // [(Track B)] 턴 시작 시 침식 과다(0 미만, 100 초과) 여부를 가장 먼저 검사합니다.
         // 팀원이 힐/게이지 조작으로 구제해주지 못했다면 이 시점에 즉사(턴 스킵)합니다.
-        if (unit.CheckAndTriggerErosionDeath())
+        if (unit.CheckAndTriggerCorrosionDeath())
         {
             ProcessDeathQueue(); // 큐에 등록된 자신을 즉시 청소합니다.
             yield break;
@@ -234,6 +240,9 @@ public class BattleManager : MonoBehaviour
 
         if (unit.IsUnableToAct())
         {
+            // [업데이트] 실제로 턴을 소모하는 과정에서 행동불능 침식 기믹을 겪었으므로 플래그를 참으로 설정합니다.
+            unit.CorrosionExperienced = true;
+
             // 턴 스킵 이벤트 발송 (Broadcast 사용)
             BattleLogEvents.BroadcastTurnSkipped(unit, "행동 불가");
         }
@@ -241,6 +250,9 @@ public class BattleManager : MonoBehaviour
         {
             if (unit.IsForcedToActRandomly())
             {
+                // [업데이트] 실제로 턴을 소모하는 과정에서 통제상실 침식 기믹을 겪었으므로 플래그를 참으로 설정합니다.
+                unit.CorrosionExperienced = true;
+
                 yield return StartCoroutine(ExecuteRandomAction(unit));
             }
             // 소속(isPlayer)이 아닌 뇌의 종류(타입)를 검사하여 진정한 다형성을 확보합니다.

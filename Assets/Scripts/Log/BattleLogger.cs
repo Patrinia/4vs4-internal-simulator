@@ -37,12 +37,12 @@ public class BattleLogger : MonoBehaviour
         BattleLogEvents.OnStatusEffectMerged += HandleStatusEffectMerged;
         BattleLogEvents.OnStatusEffectApplied += HandleStatusEffectApplied;
         BattleLogEvents.OnStatusEffectExpired += HandleStatusEffectExpired;
-        BattleLogEvents.OnErosionReverted += HandleErosionReverted;
+        BattleLogEvents.OnCorrosionReverted += HandleCorrosionReverted;
 
         BattleLogEvents.OnUnitMoved += HandleUnitMoved;
         BattleLogEvents.OnUnitSwapped += HandleUnitSwapped;
         BattleLogEvents.OnUnitDied += HandleUnitDied;
-        BattleLogEvents.OnErosionDeath += HandleErosionDeath;
+        BattleLogEvents.OnCorrosionDeath += HandleCorrosionDeath;
     }
 
     private void OnDisable()
@@ -69,12 +69,12 @@ public class BattleLogger : MonoBehaviour
         BattleLogEvents.OnStatusEffectMerged -= HandleStatusEffectMerged;
         BattleLogEvents.OnStatusEffectApplied -= HandleStatusEffectApplied;
         BattleLogEvents.OnStatusEffectExpired -= HandleStatusEffectExpired;
-        BattleLogEvents.OnErosionReverted -= HandleErosionReverted;
+        BattleLogEvents.OnCorrosionReverted -= HandleCorrosionReverted;
 
         BattleLogEvents.OnUnitMoved -= HandleUnitMoved;
         BattleLogEvents.OnUnitSwapped -= HandleUnitSwapped;
         BattleLogEvents.OnUnitDied -= HandleUnitDied;
-        BattleLogEvents.OnErosionDeath -= HandleErosionDeath;
+        BattleLogEvents.OnCorrosionDeath -= HandleCorrosionDeath;
     }
 
     // ========================================================================
@@ -194,7 +194,7 @@ public class BattleLogger : MonoBehaviour
         Debug.Log($"<color=grey>[해제] {target.unitName}의 {type} 상태가 해제되었습니다.</color>");
     }
 
-    private void HandleErosionReverted(UnitControl unit, string stateName)
+    private void HandleCorrosionReverted(UnitControl unit, string stateName)
     {
         if (!IsLoggingEnabled) return;
         Debug.Log($"<color=cyan><b>[{unit.unitName}]</b>의 {stateName} 상태가 해제되어 수치가 기준점(50)으로 복귀합니다.</color>");
@@ -218,7 +218,7 @@ public class BattleLogger : MonoBehaviour
         Debug.Log($"<color=black><b>[사망]</b> {unit.unitName}이(가) 쓰러졌습니다!</color>");
     }
 
-    private void HandleErosionDeath(UnitControl unit, int value)
+    private void HandleCorrosionDeath(UnitControl unit, int value)
     {
         if (!IsLoggingEnabled) return;
         Debug.Log($"<color=purple>[침식 붕괴] {unit.unitName}의 음/양 수치가 한계를 돌파({value})하여 특수 사망합니다!</color>");

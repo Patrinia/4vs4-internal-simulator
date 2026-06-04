@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System;
 
 // ====================================================
-// [UnitControl.cs]
+// [UnitControl.cs] 
 // 전장에 스폰된 유닛 객체의 실시간 상태와 체력/속성 변수를 관리합니다.
 // ====================================================
 public class UnitControl : MonoBehaviour
@@ -22,6 +22,9 @@ public class UnitControl : MonoBehaviour
 
     // 침식 특수 사망에 면역인지 여부 (기본값 false)
     public bool corrosionImmune = false;
+
+    // [신규 업데이트 B-1] 이번 라운드에 침식 관련 기믹 패널티를 실제로 겪었는지 여부를 기억하는 플래그
+    public bool CorrosionExperienced { get; set; } = false;
 
     // 체력 고갈, 즉사 기믹, 침식 초과 시 BattleManager에게 알리는 이벤트
     public event Action<UnitControl> OnDeathConditionMet;
@@ -60,7 +63,11 @@ public class UnitControl : MonoBehaviour
         currentHP = startingState.currentHP;
         isDead = false;
 
+        // 기획 데이터(UnitData)상의 고유 침식 면역 수치를 실시간 개체 데이터에 정확히 주입
+        corrosionImmune = data.isImmuneToCorrosion;
+
         currentAttributes.Clear();
+        CorrosionExperienced = false; // [업데이트] 새로운 라운드 세션을 위해 기믹 경험 플래그 초기화
         skillCooldowns.Clear(); // 쿨타임 초기화
         activeEffects.Clear();  // 초기화 시 상태이상 리스트도 비웁니다.
 
@@ -224,7 +231,7 @@ public class UnitControl : MonoBehaviour
     /// 턴 시작 시 호출되어, 침식 한계 돌파(0 미만, 100 초과)로 인한 특수 사망(유형 3)을 판별합니다.
     /// 만약 조건이 맞다면 이벤트를 발송하고 true를 반환합니다.
     /// </summary>
-    public bool CheckAndTriggerErosionDeath()
+    public bool CheckAndTriggerCorrosionDeath()
     {
         // 이미 사망했거나 면역이면 무시합니다.
         if (isDead || corrosionImmune) return false;
@@ -233,8 +240,8 @@ public class UnitControl : MonoBehaviour
         {
             if (yinYangValue < 0 || yinYangValue > 100)
             {
-                // [업데이트] 침식 특수 사망 이벤트를 송출합니다. (Broadcast 사용)
-                BattleLogEvents.BroadcastErosionDeath(this, yinYangValue);
+                // 침식 특수 사망 이벤트를 송출합니다. (Broadcast 사용)
+                BattleLogEvents.BroadcastCorrosionDeath(this, yinYangValue);
                 OnDeathConditionMet?.Invoke(this);
                 return true;
             }

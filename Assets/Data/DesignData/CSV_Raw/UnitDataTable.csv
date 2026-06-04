@@ -1,4 +1,4 @@
-UnitID,UnitName,UnitRank,AIBrainType,MaxHP,MinSpeed,MaxSpeed,BaseAttributes,CorrisionImmune,MoveSkill,UltiSkillPool,NormalSkillPool
+UnitID,UnitName,UnitRank,AIBrainType,MaxHP,MinSpeed,MaxSpeed,BaseAttributes,CorrosionImmune,MoveSkill,UltiSkillPool,NormalSkillPool
 UN_PC_HongGildong_5,홍길동,5,Player,80,10,14,YinYang:50,TRUE,SK_M_5_001,,SK_N_5_001;SK_N_5_002;SK_N_5_003
 UN_PC_HongGildong_3,홍길동,3,Player,120,12,16,YinYang:50,TRUE,SK_M_4_002,SK_U_0_001;SK_U_1_002,SK_N_5_001;SK_N_4_009;SK_N_4_011;SK_N_4_014
 UN_PC_HongGildong_1,홍길동,1,Player,200,15,20,YinYang:50,TRUE,SK_M_3_003,SK_U_0_001;SK_U_1_003;SK_U_0_005,SK_N_3_019;SK_N_1_043;SK_N_0_052;SK_N_0_060
