@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10073fda25fdb1459f2c8c6ab8bc61e, type: 3}
+  m_Name: UN_NM_Bandit_4
+  m_EditorClassIdentifier: Assembly-CSharp::UnitData
+  unitID: UN_NM_Bandit_4
+  unitName: "\uC0B0\uC801"
+  unitRank: 4
+  maxHP: 55
+  minSpeed: 9
+  maxSpeed: 13
+  baseAttributes: []
+  isImmuneToCorrosion: 0
+  normalSkillPool:
+  - {fileID: 11400000, guid: 602733848e2581543aa635d181b5cb23, type: 2}
+  - {fileID: 11400000, guid: aa1991df74c013f4e85b63b409825911, type: 2}
+  - {fileID: 11400000, guid: 8c1d8fcf1ba81b748aa2156cf98fe5e2, type: 2}
+  movementSkill: {fileID: 11400000, guid: 4ee49be6491885244a50af887ccd8883, type: 2}
+  ultimateSkillPool: []
+  defaultAIBrainType: 2
+  unitPrefab: {fileID: 0}
+  unitPortrait: {fileID: 0}

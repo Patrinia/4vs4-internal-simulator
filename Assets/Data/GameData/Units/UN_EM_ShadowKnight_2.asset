@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10073fda25fdb1459f2c8c6ab8bc61e, type: 3}
+  m_Name: UN_EM_ShadowKnight_2
+  m_EditorClassIdentifier: Assembly-CSharp::UnitData
+  unitID: UN_EM_ShadowKnight_2
+  unitName: "\uADF8\uB9BC\uC790 \uAE30\uC0AC"
+  unitRank: 2
+  maxHP: 150
+  minSpeed: 11
+  maxSpeed: 16
+  baseAttributes:
+  - type: 2
+    baseValue: 40
+  isImmuneToCorrosion: 1
+  normalSkillPool:
+  - {fileID: 11400000, guid: 8c1d8fcf1ba81b748aa2156cf98fe5e2, type: 2}
+  - {fileID: 11400000, guid: 8c0b679dff4b7a147bcb409748f809a7, type: 2}
+  - {fileID: 11400000, guid: 1e82d9c4a1e75044abd16457da4b2b92, type: 2}
+  - {fileID: 11400000, guid: b4c34ceea609e1d4ea7be62c80df43b3, type: 2}
+  movementSkill: {fileID: 11400000, guid: 1be0bbc5316044246bfc90fe4f73b61a, type: 2}
+  ultimateSkillPool:
+  - {fileID: 11400000, guid: 9934ff482fa64d746b08a89dfd4e11a8, type: 2}
+  defaultAIBrainType: 4
+  unitPrefab: {fileID: 0}
+  unitPortrait: {fileID: 0}

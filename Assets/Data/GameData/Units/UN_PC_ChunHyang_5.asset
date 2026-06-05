@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10073fda25fdb1459f2c8c6ab8bc61e, type: 3}
+  m_Name: UN_PC_ChunHyang_5
+  m_EditorClassIdentifier: Assembly-CSharp::UnitData
+  unitID: UN_PC_ChunHyang_5
+  unitName: "\uC131\uCD98\uD5A5"
+  unitRank: 5
+  maxHP: 85
+  minSpeed: 10
+  maxSpeed: 14
+  baseAttributes:
+  - type: 2
+    baseValue: 50
+  isImmuneToCorrosion: 1
+  normalSkillPool:
+  - {fileID: 11400000, guid: 7b861a60a3d22924783a5d38b96f2c68, type: 2}
+  - {fileID: 11400000, guid: 478d11143f34cf549bb6c2c75c4b97a9, type: 2}
+  - {fileID: 11400000, guid: 7ea31ef7ee0e70d4484b0a4bcf7d9545, type: 2}
+  movementSkill: {fileID: 11400000, guid: 4ee49be6491885244a50af887ccd8883, type: 2}
+  ultimateSkillPool: []
+  defaultAIBrainType: 1
+  unitPrefab: {fileID: 0}
+  unitPortrait: {fileID: 0}

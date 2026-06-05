@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10073fda25fdb1459f2c8c6ab8bc61e, type: 3}
+  m_Name: UN_PC_Iljimae_2
+  m_EditorClassIdentifier: Assembly-CSharp::UnitData
+  unitID: UN_PC_Iljimae_2
+  unitName: "\uC774\uC9C0\uB9E4"
+  unitRank: 2
+  maxHP: 110
+  minSpeed: 14
+  maxSpeed: 18
+  baseAttributes:
+  - type: 2
+    baseValue: 20
+  isImmuneToCorrosion: 1
+  normalSkillPool:
+  - {fileID: 11400000, guid: a2cdec9baffce524db0cb8cc1020629f, type: 2}
+  - {fileID: 11400000, guid: bc30c96a92060934fa9bb78870f6effe, type: 2}
+  - {fileID: 11400000, guid: caaad72a3adea164b9f90ef07989b7e5, type: 2}
+  movementSkill: {fileID: 11400000, guid: 1be0bbc5316044246bfc90fe4f73b61a, type: 2}
+  ultimateSkillPool:
+  - {fileID: 11400000, guid: 56a835aa3e6ed0740aa5a05321252d30, type: 2}
+  defaultAIBrainType: 1
+  unitPrefab: {fileID: 0}
+  unitPortrait: {fileID: 0}

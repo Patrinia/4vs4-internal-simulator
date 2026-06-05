@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10073fda25fdb1459f2c8c6ab8bc61e, type: 3}
+  m_Name: UN_PC_JeonWuchi_3
+  m_EditorClassIdentifier: Assembly-CSharp::UnitData
+  unitID: UN_PC_JeonWuchi_3
+  unitName: "\uC804\uC6B0\uCE58"
+  unitRank: 3
+  maxHP: 130
+  minSpeed: 13
+  maxSpeed: 17
+  baseAttributes:
+  - type: 1
+    baseValue: 50
+  isImmuneToCorrosion: 1
+  normalSkillPool:
+  - {fileID: 11400000, guid: c6eeb76b5e430424f94f484a2074d74b, type: 2}
+  - {fileID: 11400000, guid: abd708a93dd24ea4da1f0f3c06e813c6, type: 2}
+  - {fileID: 11400000, guid: 4827b6f522074e14f94bbf62b02d4eea, type: 2}
+  - {fileID: 11400000, guid: 0c0bc21ddebc2d84298db0b2f303e8df, type: 2}
+  movementSkill: {fileID: 11400000, guid: 1be0bbc5316044246bfc90fe4f73b61a, type: 2}
+  ultimateSkillPool:
+  - {fileID: 11400000, guid: 52be3f71e6ad5f740b5536e576005b73, type: 2}
+  - {fileID: 11400000, guid: 6ffefda12200b2e4098b7cc76e8cb5fe, type: 2}
+  defaultAIBrainType: 1
+  unitPrefab: {fileID: 0}
+  unitPortrait: {fileID: 0}

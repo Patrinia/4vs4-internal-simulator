@@ -1,0 +1,5 @@
+root = true
+
+
+[*.{cs, csv}]
+charset = utf-8

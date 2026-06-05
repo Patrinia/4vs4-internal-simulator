@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c10073fda25fdb1459f2c8c6ab8bc61e, type: 3}
+  m_Name: UN_NM_Cultist_2
+  m_EditorClassIdentifier: Assembly-CSharp::UnitData
+  unitID: UN_NM_Cultist_2
+  unitName: "\uD751\uCE58 \uC0AC\uAD50\uB3C4"
+  unitRank: 2
+  maxHP: 70
+  minSpeed: 10
+  maxSpeed: 14
+  baseAttributes:
+  - type: 1
+    baseValue: 50
+  isImmuneToCorrosion: 0
+  normalSkillPool:
+  - {fileID: 11400000, guid: 32f23cf50a988f845a16febcd9cbf40b, type: 2}
+  - {fileID: 11400000, guid: c39cd84dcad1f4b42a96db4bd898c9c5, type: 2}
+  - {fileID: 11400000, guid: 7b861a60a3d22924783a5d38b96f2c68, type: 2}
+  - {fileID: 11400000, guid: 072399358c88a9a46a5fab1eb4e6d6d3, type: 2}
+  movementSkill: {fileID: 11400000, guid: 1be0bbc5316044246bfc90fe4f73b61a, type: 2}
+  ultimateSkillPool: []
+  defaultAIBrainType: 3
+  unitPrefab: {fileID: 0}
+  unitPortrait: {fileID: 0}
