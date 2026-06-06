@@ -2,3 +2,13 @@
 1,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:10|Aggressive:5|DebuffToEnemy:5|Heal:1|BuffToAlly:1,Utility:4|Aggressive:4|DebuffToEnemy:7|BuffToAlly:2,Direct:367|Status:0,Direct:0|Status:0,12,0,None,None,Norm:19|Ult:2,Norm:5
 2,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:10|Aggressive:5|DebuffToEnemy:5|Heal:1|BuffToAlly:1,Utility:4|Aggressive:4|DebuffToEnemy:7|BuffToAlly:2,Direct:331|Status:0,Direct:0|Status:0,11,0,None,None,Norm:19|Ult:2,None
 3,Draw/Timeout,100,4,1,100.0,35.2,0,0,Utility:10|Aggressive:5|DebuffToEnemy:5|Heal:1|BuffToAlly:1,Utility:4|Aggressive:4|DebuffToEnemy:7|BuffToAlly:2,Direct:240|Status:0,Direct:0|Status:0,341,0,None,None,Norm:328|Ult:1,None
+1,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:466|Status:0,Direct:0|Status:0,0,0,None,None,Norm:20|Ult:2,None
+2,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:444|Status:0,Direct:0|Status:0,0,0,None,None,Norm:20|Ult:2,None
+3,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:458|Status:0,Direct:0|Status:0,0,0,None,None,Norm:22|Ult:2,None
+4,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:484|Status:0,Direct:0|Status:0,0,0,None,None,Ult:2|Norm:21,Norm:11
+5,Draw/Timeout,100,4,1,100.0,17.2,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:321|Status:0,Direct:0|Status:0,0,0,None,None,Norm:351|Ult:2,None
+6,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:448|Status:0,Direct:0|Status:0,0,0,None,None,Ult:2|Norm:21,Norm:11
+7,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:493|Status:0,Direct:0|Status:0,0,0,None,None,Norm:19|Ult:2,None
+8,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:489|Status:0,Direct:0|Status:0,0,0,None,None,Norm:21|Ult:2,None
+9,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:496|Status:0,Direct:0|Status:0,0,0,None,None,Ult:2|Norm:19,Norm:10
+10,PlayerWin,6,4,0,100.0,0.0,0,0,Utility:6|Aggressive:5|DebuffToEnemy:6|BuffToAlly:2,Utility:6|Aggressive:3|DebuffToEnemy:7|BuffToAlly:2,Direct:462|Status:0,Direct:0|Status:0,0,0,None,None,Norm:20|Ult:2,None
