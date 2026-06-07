@@ -28,7 +28,7 @@ MonoBehaviour:
   maxTargetCount: 3
   subTargetOffsets: ffffffff01000000
   subTargetDamageRatio: 0.2
-  skillTendencies: 05000000
+  skillTendencies: 0500000001000000
   attributeModifiers: []
   statusEffects:
   - type: 5

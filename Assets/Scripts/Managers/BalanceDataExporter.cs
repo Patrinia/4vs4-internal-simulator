@@ -12,10 +12,8 @@ using UnityEngine;
 public class BalanceDataExporter : MonoBehaviour
 {
     [Header("스트리밍 파일 제어")]
-    private string csvFilePath;
-    private string jsonFilePath;
-    private StreamWriter csvWriter;
-    private StreamWriter jsonWriter;
+    private const string CSV_FILE_NAME = "Balance_CombatMetrics.csv";
+    private const string JSON_FILE_NAME = "Balance_CombatFlow.json";
     private bool isFirstJsonRecord = true;
 
     [Header("시뮬레이션 누적 식별자")]
@@ -50,54 +48,39 @@ public class BalanceDataExporter : MonoBehaviour
     // ========================================================================
     private void Awake()
     {
-        InitializeFilePaths();
         OpenStreams();
-    }
-
-    private void InitializeFilePaths()
-    {
-        // 에디터와 빌드 환경 모두를 아우르는 상대 경로 폴더 생성
-        string folderPath = Path.GetFullPath(Path.Combine(Application.dataPath, "../SimulationLogs"));
-        if (!Directory.Exists(folderPath))
-        {
-            Directory.CreateDirectory(folderPath);
-        }
-
-        csvFilePath = Path.Combine(folderPath, "Balance_CombatMetrics.csv");
-        jsonFilePath = Path.Combine(folderPath, "Balance_CombatFlow.json");
     }
 
     private void OpenStreams()
     {
-        // 1. CSV 헤더 초기화
-        bool writeCsvHeader = !File.Exists(csvFilePath);
-        csvWriter = new StreamWriter(csvFilePath, true, System.Text.Encoding.UTF8);
-        if (writeCsvHeader)
+        // 1. CSV 헤더 초기화 및 스트림 오픈 요청 (SimulationLogManager 위임)
+        string csvHeader = "Sim_ID,Result,Total_Rounds,P_Alive_Count,E_Alive_Count,P_Remain_HP_Ratio,E_Remain_HP_Ratio," +
+                           "P_Corrosion_Deaths,E_Corrosion_Deaths,P_Tendency_Distribution,E_Tendency_Distribution," +
+                           "P_Dmg_Split,E_Dmg_Split,P_Heal_Done,E_Heal_Done,P_Status_Impact,E_Status_Impact," +
+                           "P_Skill_Counters,E_Skill_Counters";
+
+        if (SimulationLogManager.Instance != null)
         {
-            string header = "Sim_ID,Result,Total_Rounds,P_Alive_Count,E_Alive_Count,P_Remain_HP_Ratio,E_Remain_HP_Ratio," +
-                            "P_Corrosion_Deaths,E_Corrosion_Deaths,P_Tendency_Distribution,E_Tendency_Distribution," +
-                            "P_Dmg_Split,E_Dmg_Split,P_Heal_Done,E_Heal_Done,P_Status_Impact,E_Status_Impact," +
-                            "P_Skill_Counters,E_Skill_Counters";
-            csvWriter.WriteLine(header);
+            SimulationLogManager.Instance.InitializeStream(CSV_FILE_NAME, csvHeader);
+
+            // 2. JSON 배열 열기 (초기 괄호 기입)
+            SimulationLogManager.Instance.InitializeStream(JSON_FILE_NAME, "[");
+        }
+        else
+        {
+            Debug.LogError("[BalanceDataExporter] SimulationLogManager 인스턴스를 찾을 수 없습니다!");
         }
 
-        // 2. JSON 배열 열기 (기존 파일 덮어쓰기)
-        jsonWriter = new StreamWriter(jsonFilePath, false, System.Text.Encoding.UTF8);
-        jsonWriter.WriteLine("[");
         isFirstJsonRecord = true;
     }
 
     private void OnDestroy()
     {
-        // 게임/시뮬레이션 종료 시 JSON 배열 닫기 및 스트림 해제
-        if (jsonWriter != null)
+        // 게임/시뮬레이션 종료 시 JSON 배열 닫기 및 스트림 해제 요청
+        if (SimulationLogManager.Instance != null)
         {
-            jsonWriter.WriteLine("\n]");
-            jsonWriter.Close();
-        }
-        if (csvWriter != null)
-        {
-            csvWriter.Close();
+            SimulationLogManager.Instance.CloseStream(JSON_FILE_NAME, "\n]");
+            SimulationLogManager.Instance.CloseStream(CSV_FILE_NAME);
         }
     }
 
@@ -162,26 +145,43 @@ public class BalanceDataExporter : MonoBehaviour
         p_statusImpactDict.Clear(); e_statusImpactDict.Clear();
         p_skillCountDict.Clear(); e_skillCountDict.Clear();
 
-        // 편성 태그(Tendency) 추출 (읽기 전용)
+        // JSON 루트 객체 생성 (초기화)
+        currentBattleRecord = new BattleRecord { Sim_ID = currentSimId };
+
+        // [업데이트] 초기 전장 세팅 정보 파싱 및 JSON 주입 (읽기 전용)
         if (BattleManager.Instance != null)
         {
             foreach (var unit in BattleManager.Instance.allUnits)
             {
+                // 1. CSV 용 텐던시 추출
                 var targetDict = unit.isPlayer ? p_tendencyDict : e_tendencyDict;
+
+                // 2. JSON 초기 세팅 정보 객체 생성
+                InitialUnitSetup setupInfo = new InitialUnitSetup
+                {
+                    UnitName = unit.unitName,
+                    IsPlayer = unit.isPlayer,
+                    PositionIndex = unit.positionIndex
+                };
+
                 foreach (var skill in unit.equippedSkills)
                 {
+                    // CSV 용 태그 카운팅
                     foreach (var tag in skill.skillTendencies)
                     {
                         string tagStr = tag.ToString();
                         if (targetDict.ContainsKey(tagStr)) targetDict[tagStr]++;
                         else targetDict[tagStr] = 1;
                     }
+
+                    // JSON 스킬 이름 목록 수집
+                    setupInfo.EquippedSkills.Add(skill.skillID); // 파이썬 식별을 위해 ID 기록
                 }
+
+                // JSON 최상단 헤더(InitialSetup) 리스트에 추가
+                currentBattleRecord.InitialSetup.Add(setupInfo);
             }
         }
-
-        // JSON 루트 객체 생성
-        currentBattleRecord = new BattleRecord { Sim_ID = currentSimId };
     }
 
     private void HandleRoundStarted(int round)
@@ -380,17 +380,24 @@ public class BalanceDataExporter : MonoBehaviour
                      $"{p_dmgSplit},{e_dmgSplit},{p_healDone},{e_healDone},{p_impact},{e_impact}," +
                      $"{p_skills},{e_skills}";
 
-        csvWriter.WriteLine(row);
-        csvWriter.Flush(); // [메모리 방어] 파일에 즉시 쓰고 버퍼를 비웁니다.
+        // I/O 매니저에게 쓰기 위임
+        if (SimulationLogManager.Instance != null)
+        {
+            SimulationLogManager.Instance.WriteRecord(CSV_FILE_NAME, row);
+        }
     }
 
     private void WriteJsonRecord()
     {
         string jsonStr = JsonUtility.ToJson(currentBattleRecord, true);
 
-        if (!isFirstJsonRecord) jsonWriter.WriteLine(",");
-        jsonWriter.Write(jsonStr);
-        jsonWriter.Flush(); // [메모리 방어] 파일에 즉시 쓰고 버퍼를 비웁니다.
+        // I/O 매니저에게 쓰기 위임 (첫 레코드가 아니면 콤마를 앞에 붙임)
+        if (!isFirstJsonRecord) jsonStr = ",\n" + jsonStr;
+
+        if (SimulationLogManager.Instance != null)
+        {
+            SimulationLogManager.Instance.WriteRecord(JSON_FILE_NAME, jsonStr);
+        }
 
         isFirstJsonRecord = false;
         currentBattleRecord = null; // 메모리에서 JSON 객체 파기
@@ -406,11 +413,26 @@ public class BalanceDataExporter : MonoBehaviour
 // ========================================================================
 // [JSON 직렬화용 보조 클래스 (Tree 구조)]
 // ========================================================================
+
+// [업데이트] 전장 초기 세팅을 기록할 신규 구조체 추가
+[Serializable]
+public class InitialUnitSetup
+{
+    public string UnitName;
+    public bool IsPlayer;
+    public int PositionIndex; // 0번이 최전방, 3번이 최후방
+    public List<string> EquippedSkills = new List<string>();
+}
+
 [Serializable]
 public class BattleRecord
 {
     public int Sim_ID;
     public string Battle_Result;
+
+    // [업데이트] JSON의 최상단(헤더)에 초기 세팅 리스트를 삽입
+    public List<InitialUnitSetup> InitialSetup = new List<InitialUnitSetup>();
+
     public List<RoundRecord> Rounds = new List<RoundRecord>();
 }
 

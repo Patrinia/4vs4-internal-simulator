@@ -24,11 +24,11 @@ MonoBehaviour:
   minHeal: 0
   maxHeal: 0
   targetType: 1
-  validRanges: 0200000004000000
+  validRanges: 020000000300000004000000
   maxTargetCount: 1
   subTargetOffsets: 
   subTargetDamageRatio: 0
-  skillTendencies: 04000000
+  skillTendencies: 0400000001000000
   attributeModifiers:
   - type: 1
     amount: -30
