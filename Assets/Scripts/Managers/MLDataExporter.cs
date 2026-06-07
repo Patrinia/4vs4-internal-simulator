@@ -1,0 +1,216 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+
+// ====================================================
+// [MLDataExporter.cs]
+// 파이썬 비지도 학습(Clustering) 모델의 입력 데이터(Feature Matrix)를 생성하는 전담 수집가입니다.
+// 플레이어의 행동 패턴을 0.0 ~ 1.0 스케일의 연속형 변수로 정규화하여 평탄화된 CSV를 추출합니다.
+// ====================================================
+public class MLDataExporter : MonoBehaviour
+{
+    [Header("머신러닝 파일 제어")]
+    // [업데이트] Manager가 MLCluster 전용 폴더를 생성하도록 파일명 앞에 카테고리 경로("MLCluster/")를 추가했습니다.
+    private const string CSV_FILE_NAME = "MLCluster/ML_Feature_Dataset.csv";
+    private int currentSimId = 0;
+
+    // ==========================================
+    // [런타임 피처 수집 장부 (1회차 전투용)]
+    // ==========================================
+
+    // Operating Features (운영 지표)
+    private int totalPlayerSkills = 0;
+    private Dictionary<TendencyType, int> skillTendencyCounts = new Dictionary<TendencyType, int>();
+    private List<float> roundEndYinYangAverages = new List<float>();
+
+    // Tactical Features (전술 지표)
+    private int playerTotalTurns = 0;
+    private int playerSkippedTurns = 0;
+    private int playerCorrosionReverts = 0;
+
+    // ========================================================================
+    // [1. 초기화 및 스트림 오픈 요청]
+    // ========================================================================
+    private void Awake()
+    {
+        // 10개의 정규화된 피처 칼럼 헤더 (Sim_ID 포함)
+        string csvHeader = "Sim_ID,Alive_Ratio,Remaining_HP_Ratio,YinYang_Deviation," +
+                           "Skill_Aggressive,Skill_Heal,Skill_Utility,Skill_Defensive," +
+                           "Turn_Skip_Ratio,Corrosion_Revert_Count";
+
+        if (SimulationLogManager.Instance != null)
+        {
+            SimulationLogManager.Instance.InitializeStream(CSV_FILE_NAME, csvHeader);
+        }
+        else
+        {
+            Debug.LogError("[MLDataExporter] SimulationLogManager 인스턴스를 찾을 수 없습니다.");
+        }
+    }
+
+    // ========================================================================
+    // [2. 이벤트 구독 (옵저버 패턴)]
+    // ========================================================================
+    private void OnEnable()
+    {
+        BattleLogEvents.OnBattleStarted += HandleBattleStarted;
+        BattleLogEvents.OnBattleEnded += HandleBattleEnded;
+        BattleLogEvents.OnRoundEnded += HandleRoundEnded;
+        BattleLogEvents.OnTurnStarted += HandleTurnStarted;
+        BattleLogEvents.OnTurnSkipped += HandleTurnSkipped;
+        BattleLogEvents.OnSkillCasted += HandleSkillCasted;
+        BattleLogEvents.OnCorrosionReverted += HandleCorrosionReverted;
+    }
+
+    private void OnDisable()
+    {
+        BattleLogEvents.OnBattleStarted -= HandleBattleStarted;
+        BattleLogEvents.OnBattleEnded -= HandleBattleEnded;
+        BattleLogEvents.OnRoundEnded -= HandleRoundEnded;
+        BattleLogEvents.OnTurnStarted -= HandleTurnStarted;
+        BattleLogEvents.OnTurnSkipped -= HandleTurnSkipped;
+        BattleLogEvents.OnSkillCasted -= HandleSkillCasted;
+        BattleLogEvents.OnCorrosionReverted -= HandleCorrosionReverted;
+    }
+
+    // ========================================================================
+    // [3. 런타임 데이터 축적부]
+    // ========================================================================
+    private void HandleBattleStarted()
+    {
+        currentSimId++;
+
+        // 피처 장부 초기화
+        totalPlayerSkills = 0;
+        playerTotalTurns = 0;
+        playerSkippedTurns = 0;
+        playerCorrosionReverts = 0;
+        skillTendencyCounts.Clear();
+        roundEndYinYangAverages.Clear();
+    }
+
+    private void HandleSkillCasted(UnitControl caster, UnitControl target, SkillData skill)
+    {
+        // 머신러닝의 분석 대상은 '플레이어'이므로 적군의 행동은 집계하지 않습니다.
+        if (!caster.isPlayer) return;
+
+        totalPlayerSkills++;
+
+        foreach (var tag in skill.skillTendencies)
+        {
+            if (!skillTendencyCounts.ContainsKey(tag)) skillTendencyCounts[tag] = 0;
+            skillTendencyCounts[tag]++;
+        }
+    }
+
+    private void HandleRoundEnded(int round)
+    {
+        if (BattleManager.Instance == null) return;
+
+        var alivePlayers = BattleManager.Instance.allUnits.Where(u => u.isPlayer && !u.isDead).ToList();
+        if (alivePlayers.Count == 0) return;
+
+        // 라운드 종료 시점의 생존 아군 음양 수치 평균을 구하여, 50(중립)으로부터의 편차를 기록합니다.
+        float avgYinYang = 0f;
+        foreach (var player in alivePlayers)
+        {
+            if (player.currentAttributes.TryGetValue(AttributeType.YinYang, out int yy))
+            {
+                avgYinYang += yy;
+            }
+            else
+            {
+                avgYinYang += 50f;
+            }
+        }
+        avgYinYang /= alivePlayers.Count;
+
+        // 50으로부터 얼마나 벗어났는지(절댓값)를 기록 (Gauge_Stability 지표)
+        roundEndYinYangAverages.Add(Mathf.Abs(avgYinYang - 50f));
+    }
+
+    private void HandleTurnStarted(UnitControl unit)
+    {
+        if (unit.isPlayer) playerTotalTurns++;
+    }
+
+    private void HandleTurnSkipped(UnitControl unit, string reason)
+    {
+        if (unit.isPlayer) playerSkippedTurns++;
+    }
+
+    private void HandleCorrosionReverted(UnitControl unit, string stateName)
+    {
+        if (unit.isPlayer) playerCorrosionReverts++;
+    }
+
+    // ========================================================================
+    // [4. 피처 평탄화(Flattening) 및 파일 스트리밍]
+    // ========================================================================
+    private void HandleBattleEnded()
+    {
+        // 1. Result Features (생존 성과) 산출
+        CalculateResultFeatures(out float aliveRatio, out float hpRatio);
+
+        // 2. Operating Features (운영 지표) 산출
+        CalculateOperatingFeatures(out float yyDeviation, out float aggRatio, out float healRatio, out float utilRatio, out float defRatio);
+
+        // 3. Tactical Features (전술 지표) 산출
+        CalculateTacticalFeatures(out float skipRatio);
+
+        // CSV 포맷 조립 (스파게티 코드 방지를 위해 소수점 통일)
+        string row = $"{currentSimId},{aliveRatio:F3},{hpRatio:F3},{yyDeviation:F1}," +
+                     $"{aggRatio:F3},{healRatio:F3},{utilRatio:F3},{defRatio:F3}," +
+                     $"{skipRatio:F3},{playerCorrosionReverts}";
+
+        // I/O 매니저에게 쓰기 위임 (Chunk-based Stateless I/O 연동)
+        if (SimulationLogManager.Instance != null)
+        {
+            SimulationLogManager.Instance.WriteRecord(CSV_FILE_NAME, row);
+        }
+    }
+
+    // ========================================================================
+    // [내부 헬퍼 메서드 - OCP 및 SRP 준수]
+    // ========================================================================
+    private void CalculateResultFeatures(out float aliveRatio, out float hpRatio)
+    {
+        aliveRatio = 0f;
+        hpRatio = 0f;
+
+        if (BattleManager.Instance == null) return;
+
+        var players = BattleManager.Instance.allUnits.Where(u => u.isPlayer).ToList();
+        if (players.Count == 0) return;
+
+        int aliveCount = players.Count(u => !u.isDead);
+        aliveRatio = (float)aliveCount / players.Count;
+
+        float maxHpSum = players.Sum(u => u.SourceData != null ? u.SourceData.maxHP : 1);
+        float curHpSum = players.Where(u => !u.isDead).Sum(u => u.currentHP);
+        hpRatio = maxHpSum > 0 ? curHpSum / maxHpSum : 0f;
+    }
+
+    private void CalculateOperatingFeatures(out float yyDeviation, out float aggRatio, out float healRatio, out float utilRatio, out float defRatio)
+    {
+        yyDeviation = roundEndYinYangAverages.Count > 0 ? roundEndYinYangAverages.Average() : 0f;
+
+        aggRatio = GetTendencyRatio(TendencyType.Aggressive);
+        healRatio = GetTendencyRatio(TendencyType.Heal);
+        utilRatio = GetTendencyRatio(TendencyType.Utility);
+        defRatio = GetTendencyRatio(TendencyType.Defensive);
+    }
+
+    private void CalculateTacticalFeatures(out float skipRatio)
+    {
+        // 턴 스킵 비율 (스턴, 행동불능 침식 등에 얼마나 노출되었는가를 0.0~1.0으로 표현)
+        skipRatio = playerTotalTurns > 0 ? (float)playerSkippedTurns / playerTotalTurns : 0f;
+    }
+
+    private float GetTendencyRatio(TendencyType type)
+    {
+        if (totalPlayerSkills == 0) return 0f;
+        return skillTendencyCounts.TryGetValue(type, out int count) ? (float)count / totalPlayerSkills : 0f;
+    }
+}

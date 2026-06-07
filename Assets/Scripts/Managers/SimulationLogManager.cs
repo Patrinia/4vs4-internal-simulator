@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -9,10 +9,14 @@ using UnityEngine;
 // ========================================================================
 public class SimulationLogManager : MonoBehaviour, IFileLogger
 {
-    // 외부에서는 인터페이스(IFileLogger) 타입으로만 접근하도록 제한하여 캡슐화 달성
-    public static IFileLogger Instance { get; private set; }
+    // [업데이트] 인터페이스 캐스팅 경고(CS0252) 방지 및 유니티 생명주기 캡슐화를 위한 실체 변수 선언
+    private static SimulationLogManager _instance;
 
-    private string baseFolderPath;
+    // 외부에는 IFileLogger 인터페이스 형태로만 제공 (은닉화)
+    public static IFileLogger Instance => _instance;
+
+    private string rootPath;
+    private string dateFolder;
     private string currentTimeStamp;
 
     // 활성화된 스트림을 계속 쥐고 있지 않도록, 완성된 '절대 경로'만 캐싱하는 장부
@@ -20,33 +24,26 @@ public class SimulationLogManager : MonoBehaviour, IFileLogger
 
     private void Awake()
     {
-        // 싱글톤 패턴 초기화
-        if (Instance != null && Instance != this)
+        // 싱글톤 패턴 초기화 (내부 실체 변수 사용)
+        if (_instance != null && _instance != this)
         {
             Destroy(this.gameObject);
             return;
         }
-        Instance = this;
+        _instance = this;
         DontDestroyOnLoad(this.gameObject); // 씬 전환 시에도 파괴되지 않고 유지
 
         InitializeDirectory();
     }
 
     /// <summary>
-    /// 단 한 번, 오늘 날짜의 폴더를 생성하고 이번 시뮬레이션의 고유 타임스탬프를 고정합니다.
+    /// 단 한 번, 최상위 SimulationLogs 경로 및 이번 시뮬레이션의 고유 타임스탬프를 고정합니다.
     /// </summary>
     private void InitializeDirectory()
     {
-        string rootPath = Path.GetFullPath(Path.Combine(Application.dataPath, "../SimulationLogs"));
-        string dateFolder = DateTime.Now.ToString("yyyy-MM-dd");
-        baseFolderPath = Path.Combine(rootPath, dateFolder);
-
-        if (!Directory.Exists(baseFolderPath))
-        {
-            Directory.CreateDirectory(baseFolderPath);
-        }
-
-        // 이번 시뮬레이션 세션 동안 모든 파일이 공유할 초 단위 고유 시간
+        // [업데이트] OS 쓰기 보안(Write-Protect)을 통과하는 완벽한 영구 보관소 경로로 전면 교체
+        rootPath = Path.GetFullPath(Path.Combine(Application.persistentDataPath, "SimulationLogs"));
+        dateFolder = DateTime.Now.ToString("yyyy-MM-dd");
         currentTimeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
     }
 
@@ -58,14 +55,22 @@ public class SimulationLogManager : MonoBehaviour, IFileLogger
     {
         if (filePathCache.ContainsKey(fileNameSuffix)) return;
 
-        string extension = Path.GetExtension(fileNameSuffix);
-        string nameWithoutExt = Path.GetFileNameWithoutExtension(fileNameSuffix);
-        string finalFileName = $"{nameWithoutExt}_{currentTimeStamp}{extension}";
-        string fullPath = Path.Combine(baseFolderPath, finalFileName);
+        string subDir = Path.GetDirectoryName(fileNameSuffix);
+        string fileName = Path.GetFileName(fileNameSuffix);
 
+        string extension = Path.GetExtension(fileName);
+        string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+        string finalFileName = $"{nameWithoutExt}_{currentTimeStamp}{extension}";
+
+        string targetFolderPath = Path.Combine(rootPath, subDir, dateFolder);
+        if (!Directory.Exists(targetFolderPath))
+        {
+            Directory.CreateDirectory(targetFolderPath);
+        }
+
+        string fullPath = Path.Combine(targetFolderPath, finalFileName);
         filePathCache.Add(fileNameSuffix, fullPath);
 
-        // using 블록을 사용하여 파일을 열고(Create) 기록한 뒤, 즉시 스트림을 닫아 권한을 반환합니다.
         using (FileStream fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
         using (StreamWriter writer = new StreamWriter(fs, System.Text.Encoding.UTF8))
         {
@@ -80,7 +85,6 @@ public class SimulationLogManager : MonoBehaviour, IFileLogger
     {
         if (filePathCache.TryGetValue(fileNameSuffix, out string fullPath))
         {
-            // 파일을 이어쓰기(Append) 모드로 열어 단 1줄(1회 전투 분량)을 쓰고 즉각 권한을 반환합니다.
             using (FileStream fs = new FileStream(fullPath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
             using (StreamWriter writer = new StreamWriter(fs, System.Text.Encoding.UTF8))
             {
@@ -93,16 +97,16 @@ public class SimulationLogManager : MonoBehaviour, IFileLogger
         }
     }
 
-    public void CloseStream(string fileNameSuffix, string closingContent = "")
+    public void CloseStream(string fileNameSuffix, string Content = "")
     {
         if (filePathCache.TryGetValue(fileNameSuffix, out string fullPath))
         {
-            if (!string.IsNullOrEmpty(closingContent))
+            if (!string.IsNullOrEmpty(Content))
             {
                 using (FileStream fs = new FileStream(fullPath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
                 using (StreamWriter writer = new StreamWriter(fs, System.Text.Encoding.UTF8))
                 {
-                    writer.WriteLine(closingContent);
+                    writer.WriteLine(Content);
                 }
             }
 
@@ -113,7 +117,9 @@ public class SimulationLogManager : MonoBehaviour, IFileLogger
 
     private void OnDestroy()
     {
-        // 유니티 종료 시 열려있는 스트림이 없으므로, 메모리(캐시) 장부만 비워줍니다.
         filePathCache.Clear();
+
+        // [업데이트] 매니저 파괴 시 내부 실체 변수(싱글톤 참조) 해제 (좀비 참조 방지)
+        if (_instance == this) _instance = null;
     }
 }

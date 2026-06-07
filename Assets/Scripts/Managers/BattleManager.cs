@@ -5,7 +5,7 @@ using UnityEngine;
 using System.Linq;
 
 // ====================================================
-// [BattleManager.cs] 
+// [BattleManager.cs] 
 // 전투의 시작, 턴 라이프사이클, 진형 관리, 그리고 최종 승패를
 // 총괄하는 게임의 오케스트라 지휘자(Orchestrator) 클래스입니다.
 // ====================================================
@@ -50,7 +50,14 @@ public class BattleManager : MonoBehaviour
         combatResolver = new CombatResolver(statusManager, FormationManager);
     }
 
-    // 기존의 Start() 내부 자동 실행 로직을 제거했습니다. 
+    // [업데이트] 매니저 파괴 시 싱글톤 참조 해제 및 이벤트 구독 정리 (좀비 참조 방지)
+    private void OnDestroy()
+    {
+        CleanupEventSubscriptions();
+        if (Instance == this) Instance = null;
+    }
+
+    // 기존의 Start() 내부 자동 실행 로직을 제거했습니다. 
     // 이제 BattleManager는 스스로 전투를 시작하지 않습니다. (수동 점화 대기)
 
     // ========================================================================

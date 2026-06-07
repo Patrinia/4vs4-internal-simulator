@@ -27,6 +27,12 @@ public class SpawnManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
+    // [업데이트] 매니저 파괴 시 싱글톤 참조 해제 (좀비 참조 방지)
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
     /// <summary>
     /// SimulationManager가 새로운 전투를 시작할 때마다 호출하여, 
     /// 건강한 상태의 8명 유닛 리스트를 받아가는 핵심 함수입니다.
@@ -37,14 +43,14 @@ public class SpawnManager : MonoBehaviour
     {
         List<UnitControl> readyUnits = new List<UnitControl>();
 
-        // 1. 아군 세팅 (0~3번 슬лот)
+        // 1. 아군 세팅 (0~3번 슬롯)
         for (int i = 0; i < playerDatas.Count; i++)
         {
             UnitControl unit = GetOrCreateUnit(playerDatas[i], true, i);
             readyUnits.Add(unit);
         }
 
-        // 2. 적군 세팅 (0~3번 슬лот)
+        // 2. 적군 세팅 (0~3번 슬롯)
         for (int i = 0; i < enemyDatas.Count; i++)
         {
             UnitControl unit = GetOrCreateUnit(enemyDatas[i], false, i);
@@ -91,11 +97,11 @@ public class SpawnManager : MonoBehaviour
         // [핵심 리셋 로직] 전투 시작 전 육체와 뇌를 완벽하게 초기화
         // ==========================================================
 
-        // [업데이트] 장부(PartyRoster)에서 세션 상태(체력 및 속성) 전반을 조회하여 주입하고, 쿨타임 초기화 및 사망(isDead) 플래그 해제
+        // 장부(PartyRoster)에서 세션 상태(체력 및 속성) 전반을 조회하여 주입하고, 쿨타임 초기화 및 사망(isDead) 플래그 해제
         CurrentPartyState startingState = PartyRoster.Instance.GetUnitState(data);
         unit.Init(data, startingState, isPlayer);
 
-        // 2. 임시 하드코딩 삭제 -> PartyRoster 장부에서 배정된 스킬을 꺼내어 장착
+        // 2. 장부에서 배정된 스킬을 꺼내어 장착
         unit.equippedSkills.Clear();
         List<SkillData> assignedSkills = PartyRoster.Instance.GetEquippedSkills(data);
         if (assignedSkills != null)

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,8 +12,9 @@ using UnityEngine;
 public class BalanceDataExporter : MonoBehaviour
 {
     [Header("스트리밍 파일 제어")]
-    private const string CSV_FILE_NAME = "Balance_CombatMetrics.csv";
-    private const string JSON_FILE_NAME = "Balance_CombatFlow.json";
+    // [업데이트] Manager가 동적으로 폴더를 생성하도록 파일명 앞에 카테고리 경로("Balance/")를 추가했습니다.
+    private const string CSV_FILE_NAME = "Balance/Balance_CombatMetrics.csv";
+    private const string JSON_FILE_NAME = "Balance/Balance_CombatFlow.json";
     private bool isFirstJsonRecord = true;
 
     [Header("시뮬레이션 누적 식별자")]
@@ -148,7 +149,7 @@ public class BalanceDataExporter : MonoBehaviour
         // JSON 루트 객체 생성 (초기화)
         currentBattleRecord = new BattleRecord { Sim_ID = currentSimId };
 
-        // [업데이트] 초기 전장 세팅 정보 파싱 및 JSON 주입 (읽기 전용)
+        // 초기 전장 세팅 정보 파싱 및 JSON 주입 (읽기 전용)
         if (BattleManager.Instance != null)
         {
             foreach (var unit in BattleManager.Instance.allUnits)
@@ -191,7 +192,6 @@ public class BalanceDataExporter : MonoBehaviour
         currentRoundRecord.Phase_RoundStart.Add($"라운드 {round} 시작");
     }
 
-    // [정상화 교정 완료] 선언만 하고 작성하지 않았던 라운드 종료 메서드를 추가했습니다.
     private void HandleRoundEnded(int round)
     {
         if (currentRoundRecord != null)
@@ -312,10 +312,6 @@ public class BalanceDataExporter : MonoBehaviour
     // ========================================================================
     // [Method B: 상태이상 대미지 명시적 수신부 (Stage C 확장용)]
     // ========================================================================
-    /// <summary>
-    /// 향후 StatusEffectManager에서 도트딜 연산 시 이 콜백(이벤트)을 쏘아주면 
-    /// 수집가가 연산 없이 안전하게 기여도 장부에 더합니다.
-    /// </summary>
     public void HandleStatusImpactDealt(UnitControl caster, EffectType type, int amount)
     {
         // 1. 상태이상 데미지 합계 분리
@@ -413,8 +409,6 @@ public class BalanceDataExporter : MonoBehaviour
 // ========================================================================
 // [JSON 직렬화용 보조 클래스 (Tree 구조)]
 // ========================================================================
-
-// [업데이트] 전장 초기 세팅을 기록할 신규 구조체 추가
 [Serializable]
 public class InitialUnitSetup
 {
@@ -429,10 +423,7 @@ public class BattleRecord
 {
     public int Sim_ID;
     public string Battle_Result;
-
-    // [업데이트] JSON의 최상단(헤더)에 초기 세팅 리스트를 삽입
     public List<InitialUnitSetup> InitialSetup = new List<InitialUnitSetup>();
-
     public List<RoundRecord> Rounds = new List<RoundRecord>();
 }
 

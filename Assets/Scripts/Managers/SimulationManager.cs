@@ -59,6 +59,9 @@ public class SimulationManager : MonoBehaviour
         {
             BattleManager.Instance.OnBattleEnded -= HandleBattleEnded;
         }
+
+        // [업데이트] 매니저 파괴 시 싱글톤 참조 해제 (좀비 참조 방지)
+        if (Instance == this) Instance = null;
     }
 
     // ========================================================================
@@ -154,7 +157,7 @@ public class SimulationManager : MonoBehaviour
             );
 
             // 2. 엔진 점화!
-            // [업데이트] 시뮬레이션 환경에 맞춰 최대 100라운드의 제한 규칙을 명시적으로 주입합니다. (OCP 준수)
+            // 시뮬레이션 환경에 맞춰 최대 100라운드의 제한 규칙을 명시적으로 주입합니다. (OCP 준수)
             BattleManager.Instance.StartBattle(unitsForThisBattle, 100);
 
             // 3. BattleManager가 전투 종료 이벤트를 쏠 때까지 루프를 잠시 멈추고 대기

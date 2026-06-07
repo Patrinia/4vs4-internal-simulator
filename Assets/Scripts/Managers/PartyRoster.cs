@@ -39,6 +39,12 @@ public class PartyRoster : MonoBehaviour
         else Destroy(gameObject);
     }
 
+    // [업데이트] 매니저 파괴 시 싱글톤 참조 해제 (좀비 참조 방지)
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
     // ========================================================================
     // [명단 주입 API (UI 또는 씬 전환 매니저에서 호출)]
     // ========================================================================
