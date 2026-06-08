@@ -18,7 +18,7 @@ public class MLDataExporter : MonoBehaviour
     // ==========================================
     // [런타임 피처 수집 장부 (1회차 전투용)]
     // ==========================================
-    private int totalRounds = 0; // [업데이트] 정규화(Ratio) 계산을 위한 총 라운드 수 장부 추가
+    private int totalRounds = 0; // 정규화(Ratio) 계산을 위한 총 라운드 수 장부 추가
 
     // Operating Features (운영 지표)
     private int totalPlayerSkills = 0;
@@ -33,14 +33,14 @@ public class MLDataExporter : MonoBehaviour
     // ========================================================================
     // [1. 초기화 및 스트림 오픈 요청]
     // ========================================================================
-    // [업데이트] 유니티 내 단 1회성 제약인 Start()를 전면 폐기하고, 거시 세션 수명주기 메서드로 로직을 완전히 이동시켰습니다.
+    // 유니티 내 단 1회성 제약인 Start()를 전면 폐기하고, 거시 세션 수명주기 메서드로 로직을 완전히 이동시켰습니다.
 
     // ========================================================================
     // [2. 이벤트 구독 (옵저버 패턴)]
     // ========================================================================
     private void OnEnable()
     {
-        // [업데이트] 연속 실행 시 생명주기 통제를 위한 거시 세션 이벤트 구독 추가
+        //  연속 실행 시 생명주기 통제를 위한 거시 세션 이벤트 구독 추가
         BattleLogEvents.OnSimulationSessionStarted += HandleSimulationSessionStarted;
         BattleLogEvents.OnSimulationSessionEnded += HandleSimulationSessionEnded;
 
@@ -81,8 +81,8 @@ public class MLDataExporter : MonoBehaviour
         string uniqueSessionTimeStamp = DateTime.Now.ToString("HHmmss");
         activeCsvPath = $"MLCluster/ML_Feature_Dataset_{uniqueSessionTimeStamp}.csv";
 
-        // [업데이트] 잘못된 헤더 정보(Corrosion_Revert_Count)를 정규화된 이름(Corrosion_Revert_Ratio)으로 교정
-        string csvHeader = "Sim_ID,Alive_Ratio,Remaining_HP_Ratio,YinYang_Deviation," +
+        // 스피드/늪지대형 페르소나 분별을 위해 Total_Rounds 피처를 CSV 헤더에 명시적으로 추가
+        string csvHeader = "Sim_ID,Total_Rounds,Alive_Ratio,Remaining_HP_Ratio,YinYang_Deviation," +
                            "Skill_Aggressive,Skill_Heal,Skill_Utility,Skill_Defensive," +
                            "Turn_Skip_Ratio,Corrosion_Revert_Ratio";
 
@@ -197,7 +197,8 @@ public class MLDataExporter : MonoBehaviour
         CalculateTacticalFeatures(out float skipRatio, out float corrosionRevertRatio);
 
         // CSV 포맷 조립 (스파게티 코드 방지를 위해 소수점 통일)
-        string row = $"{currentSimId},{aliveRatio:F3},{hpRatio:F3},{yyDeviation:F1}," +
+        // CSV 데이터 로우에 totalRounds 값을 두 번째 칼럼으로 삽입하여 파이썬 측에서 활용할 수 있게 합니다.
+        string row = $"{currentSimId},{totalRounds},{aliveRatio:F3},{hpRatio:F3},{yyDeviation:F1}," +
                      $"{aggRatio:F3},{healRatio:F3},{utilRatio:F3},{defRatio:F3}," +
                      $"{skipRatio:F3},{corrosionRevertRatio:F3}";
 
@@ -244,7 +245,7 @@ public class MLDataExporter : MonoBehaviour
         // 턴 스킵 비율 (스턴, 행동불능 침식 등에 얼마나 노출되었는가를 0.0~1.0으로 표현)
         skipRatio = playerTotalTurns > 0 ? (float)playerSkippedTurns / playerTotalTurns : 0f;
 
-        // [업데이트] 절대 횟수에서 총 라운드 수 대비 비율로 정규화 (0.0~1.0 스케일)
+        // 절대 횟수에서 총 라운드 수 대비 비율로 정규화 (0.0~1.0 스케일)
         corrosionRevertRatio = totalRounds > 0 ? (float)playerCorrosionReverts / totalRounds : 0f;
     }
 
