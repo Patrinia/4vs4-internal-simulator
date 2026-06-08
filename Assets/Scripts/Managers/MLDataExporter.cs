@@ -18,6 +18,7 @@ public class MLDataExporter : MonoBehaviour
     // ==========================================
     // [런타임 피처 수집 장부 (1회차 전투용)]
     // ==========================================
+    private int totalRounds = 0; // [업데이트] 정규화(Ratio) 계산을 위한 총 라운드 수 장부 추가
 
     // Operating Features (운영 지표)
     private int totalPlayerSkills = 0;
@@ -45,6 +46,7 @@ public class MLDataExporter : MonoBehaviour
 
         BattleLogEvents.OnBattleStarted += HandleBattleStarted;
         BattleLogEvents.OnBattleEnded += HandleBattleEnded;
+        BattleLogEvents.OnRoundStarted += HandleRoundStarted;
         BattleLogEvents.OnRoundEnded += HandleRoundEnded;
         BattleLogEvents.OnTurnStarted += HandleTurnStarted;
         BattleLogEvents.OnTurnSkipped += HandleTurnSkipped;
@@ -59,6 +61,7 @@ public class MLDataExporter : MonoBehaviour
 
         BattleLogEvents.OnBattleStarted -= HandleBattleStarted;
         BattleLogEvents.OnBattleEnded -= HandleBattleEnded;
+        BattleLogEvents.OnRoundStarted -= HandleRoundStarted;
         BattleLogEvents.OnRoundEnded -= HandleRoundEnded;
         BattleLogEvents.OnTurnStarted -= HandleTurnStarted;
         BattleLogEvents.OnTurnSkipped -= HandleTurnSkipped;
@@ -78,9 +81,10 @@ public class MLDataExporter : MonoBehaviour
         string uniqueSessionTimeStamp = DateTime.Now.ToString("HHmmss");
         activeCsvPath = $"MLCluster/ML_Feature_Dataset_{uniqueSessionTimeStamp}.csv";
 
+        // [업데이트] 잘못된 헤더 정보(Corrosion_Revert_Count)를 정규화된 이름(Corrosion_Revert_Ratio)으로 교정
         string csvHeader = "Sim_ID,Alive_Ratio,Remaining_HP_Ratio,YinYang_Deviation," +
                            "Skill_Aggressive,Skill_Heal,Skill_Utility,Skill_Defensive," +
-                           "Turn_Skip_Ratio,Corrosion_Revert_Count";
+                           "Turn_Skip_Ratio,Corrosion_Revert_Ratio";
 
         if (SimulationLogManager.Instance != null)
         {
@@ -108,12 +112,19 @@ public class MLDataExporter : MonoBehaviour
         currentSimId++;
 
         // 피처 장부 초기화
+        totalRounds = 0; // [업데이트] 매 전투 시작마다 총 라운드 수 초기화
         totalPlayerSkills = 0;
         playerTotalTurns = 0;
         playerSkippedTurns = 0;
         playerCorrosionReverts = 0;
         skillTendencyCounts.Clear();
         roundEndYinYangAverages.Clear();
+    }
+
+    // [업데이트] 라운드가 시작될 때마다 총 라운드 수를 1씩 증가시키는 헬퍼 이벤트 수신부 추가
+    private void HandleRoundStarted(int round)
+    {
+        totalRounds++;
     }
 
     private void HandleSkillCasted(UnitControl caster, UnitControl target, SkillData skill)
@@ -183,12 +194,12 @@ public class MLDataExporter : MonoBehaviour
         CalculateOperatingFeatures(out float yyDeviation, out float aggRatio, out float healRatio, out float utilRatio, out float defRatio);
 
         // 3. Tactical Features (전술 지표) 산출
-        CalculateTacticalFeatures(out float skipRatio);
+        CalculateTacticalFeatures(out float skipRatio, out float corrosionRevertRatio);
 
         // CSV 포맷 조립 (스파게티 코드 방지를 위해 소수점 통일)
         string row = $"{currentSimId},{aliveRatio:F3},{hpRatio:F3},{yyDeviation:F1}," +
                      $"{aggRatio:F3},{healRatio:F3},{utilRatio:F3},{defRatio:F3}," +
-                     $"{skipRatio:F3},{playerCorrosionReverts}";
+                     $"{skipRatio:F3},{corrosionRevertRatio:F3}";
 
         // I/O 매니저에게 쓰기 위임 (동적 고유 파일 경로 격리 적용)
         if (SimulationLogManager.Instance != null && !string.IsNullOrEmpty(activeCsvPath))
@@ -228,10 +239,13 @@ public class MLDataExporter : MonoBehaviour
         defRatio = GetTendencyRatio(TendencyType.Defensive);
     }
 
-    private void CalculateTacticalFeatures(out float skipRatio)
+    private void CalculateTacticalFeatures(out float skipRatio, out float corrosionRevertRatio)
     {
         // 턴 스킵 비율 (스턴, 행동불능 침식 등에 얼마나 노출되었는가를 0.0~1.0으로 표현)
         skipRatio = playerTotalTurns > 0 ? (float)playerSkippedTurns / playerTotalTurns : 0f;
+
+        // [업데이트] 절대 횟수에서 총 라운드 수 대비 비율로 정규화 (0.0~1.0 스케일)
+        corrosionRevertRatio = totalRounds > 0 ? (float)playerCorrosionReverts / totalRounds : 0f;
     }
 
     private float GetTendencyRatio(TendencyType type)
