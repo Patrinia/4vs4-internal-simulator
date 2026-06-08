@@ -6,43 +6,39 @@ using UnityEngine;
 // ========================================================================
 // [SimulationLogManager.cs] 
 // 파일 입출력(Directory, FileStream, StreamWriter)을 중앙 통제하는 전담 매니저입니다.
+// 내부 개발 및 파이썬 분석 편의성을 위해 프로젝트(Assets) 최상단에 로그를 저장합니다.
 // ========================================================================
 public class SimulationLogManager : MonoBehaviour, IFileLogger
 {
-    // [업데이트] 인터페이스 캐스팅 경고(CS0252) 방지 및 유니티 생명주기 캡슐화를 위한 실체 변수 선언
     private static SimulationLogManager _instance;
 
-    // 외부에는 IFileLogger 인터페이스 형태로만 제공 (은닉화)
     public static IFileLogger Instance => _instance;
 
     private string rootPath;
     private string dateFolder;
     private string currentTimeStamp;
 
-    // 활성화된 스트림을 계속 쥐고 있지 않도록, 완성된 '절대 경로'만 캐싱하는 장부
     private Dictionary<string, string> filePathCache = new Dictionary<string, string>();
 
     private void Awake()
     {
-        // 싱글톤 패턴 초기화 (내부 실체 변수 사용)
         if (_instance != null && _instance != this)
         {
             Destroy(this.gameObject);
             return;
         }
         _instance = this;
-        DontDestroyOnLoad(this.gameObject); // 씬 전환 시에도 파괴되지 않고 유지
+        DontDestroyOnLoad(this.gameObject);
 
         InitializeDirectory();
     }
 
-    /// <summary>
-    /// 단 한 번, 최상위 SimulationLogs 경로 및 이번 시뮬레이션의 고유 타임스탬프를 고정합니다.
-    /// </summary>
     private void InitializeDirectory()
-    {
-        // [업데이트] OS 쓰기 보안(Write-Protect)을 통과하는 완벽한 영구 보관소 경로로 전면 교체
-        rootPath = Path.GetFullPath(Path.Combine(Application.persistentDataPath, "SimulationLogs"));
+    { 
+        // 파이썬 분석과 기획팀의 데이터 접근 편의성을 최우선으로 하여, 
+        // 유니티 프로젝트 폴더(Assets)와 나란히 위치한 'SimulationLogs' 폴더를 사용합니다.
+        rootPath = Path.GetFullPath(Path.Combine(Application.dataPath, "../SimulationLogs"));
+
         dateFolder = DateTime.Now.ToString("yyyy-MM-dd");
         currentTimeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
     }
@@ -109,8 +105,6 @@ public class SimulationLogManager : MonoBehaviour, IFileLogger
                     writer.WriteLine(Content);
                 }
             }
-
-            // 파일 캐시 삭제
             filePathCache.Remove(fileNameSuffix);
         }
     }
@@ -118,8 +112,6 @@ public class SimulationLogManager : MonoBehaviour, IFileLogger
     private void OnDestroy()
     {
         filePathCache.Clear();
-
-        // [업데이트] 매니저 파괴 시 내부 실체 변수(싱글톤 참조) 해제 (좀비 참조 방지)
         if (_instance == this) _instance = null;
     }
 }

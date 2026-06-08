@@ -6,13 +6,20 @@ using UnityEngine;
 // [BattleLogEvents.cs]
 // 단일 책임 원칙(SRP) 및 의존성 역전 원칙(DIP)에 따라,
 // 코어 매니저들이 문자열을 조립하는 대신 순수 데이터만 전달하는 이벤트 버스(Event Bus)입니다.
-// [업데이트] C#의 이벤트 캡슐화(Encapsulation) 원칙을 준수하기 위해, 외부 접근용 Broadcast 래퍼 메서드를 제공합니다.
+// C#의 이벤트 캡슐화(Encapsulation) 원칙을 준수하기 위해, 외부 접근용 Broadcast 래퍼 메서드를 제공합니다.
 // ====================================================
 public static class BattleLogEvents
 {
     // ----------------------------------------------------
     // [1] 전투 흐름 (Battle Flow)
     // ----------------------------------------------------
+    // 거시적 시뮬레이션 세션 세트의 시작과 종료를 관리하기 위한 독립 이벤트 버스 추가
+    public static event Action OnSimulationSessionStarted;
+    public static void BroadcastSimulationSessionStarted() => OnSimulationSessionStarted?.Invoke();
+
+    public static event Action OnSimulationSessionEnded;
+    public static void BroadcastSimulationSessionEnded() => OnSimulationSessionEnded?.Invoke();
+
     public static event Action OnBattleStarted;
     public static void BroadcastBattleStarted() => OnBattleStarted?.Invoke();
 
