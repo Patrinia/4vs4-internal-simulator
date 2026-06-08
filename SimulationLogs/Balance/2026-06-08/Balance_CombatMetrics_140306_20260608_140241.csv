@@ -1,0 +1,2 @@
+﻿Sim_ID,Result,Total_Rounds,P_Alive_Count,E_Alive_Count,P_Remain_HP_Ratio,E_Remain_HP_Ratio,P_Corrosion_Deaths,E_Corrosion_Deaths,P_Tendency_Distribution,E_Tendency_Distribution,P_Dmg_Split,E_Dmg_Split,P_Heal_Done,E_Heal_Done,P_Status_Impact,E_Status_Impact,P_Skill_Counters,E_Skill_Counters
+1,Draw/Timeout,100,1,2,29.9,66.2,0,0,Utility:10|Aggressive:11|DebuffToEnemy:2|BuffToAlly:2|Heal:1,Utility:7|DebuffToEnemy:6|Aggressive:15|BuffToAlly:2,Direct:220|Status:0,Direct:437|Status:0,554,0,None,None,Norm:86|Ult:1,Norm:154|Ult:2

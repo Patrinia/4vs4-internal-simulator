@@ -73,7 +73,11 @@ public class SimulationManager : MonoBehaviour
     /// </summary>
     public void StartSimulation(int count)
     {
-        if (isRunning) return;
+        // [업데이트] 수집가들이 예외 크래시로 멈췄을 때 시스템 데드락 상태(isRunning이 true로 고착됨)를 방지하는 Fail-safe 처리
+        if (isRunning)
+        {
+            StopSimulation();
+        }
 
         targetSimulations = count;
         currentSimulations = 0;
@@ -85,6 +89,9 @@ public class SimulationManager : MonoBehaviour
         isRunning = true;
         isPaused = false;
         Time.timeScale = simulationTimeScale; // 초고속 배속 진입
+
+        // [업데이트] 실행 세트 독립화 법칙에 의거, 새로운 세션의 완전한 시작을 알림
+        BattleLogEvents.BroadcastSimulationSessionStarted();
 
         StartCoroutine(SimulationLoop());
     }
@@ -119,6 +126,9 @@ public class SimulationManager : MonoBehaviour
     public void StopSimulation()
     {
         if (!isRunning) return;
+
+        // [업데이트] 임의 중단 시에도 열려 있는 파일 스트림을 Graceful하게 닫기 위해 세션 종료 방송 선행 호출
+        BattleLogEvents.BroadcastSimulationSessionEnded();
 
         StopAllCoroutines();
         isRunning = false;

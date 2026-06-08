@@ -12,9 +12,9 @@ using UnityEngine;
 public class BalanceDataExporter : MonoBehaviour
 {
     [Header("스트리밍 파일 제어")]
-    // [업데이트] Manager가 동적으로 폴더를 생성하도록 파일명 앞에 카테고리 경로("Balance/")를 추가했습니다.
-    private const string CSV_FILE_NAME = "Balance/Balance_CombatMetrics.csv";
-    private const string JSON_FILE_NAME = "Balance/Balance_CombatFlow.json";
+    // [오류 사후 보수] 개별 실행 세트 독립 분리 법칙 준수를 위해, const 대신 세션별 동적 고유 경로 변수로 체제를 변경합니다.
+    private string activeCsvPath;
+    private string activeJsonPath;
     private bool isFirstJsonRecord = true;
 
     [Header("시뮬레이션 누적 식별자")]
@@ -47,14 +47,19 @@ public class BalanceDataExporter : MonoBehaviour
     // ========================================================================
     // [1. 초기화 및 파일 스트림 오픈]
     // ========================================================================
-    private void Awake()
-    {
-        OpenStreams();
-    }
+    // [업데이트] 단 1회성 제약인 기존 유니티 고유메서드 Start()를 제거하고 세션 제어 수명주기 방식으로 롤백 교정함
 
-    private void OpenStreams()
+    private void HandleSimulationSessionStarted()
     {
-        // 1. CSV 헤더 초기화 및 스트림 오픈 요청 (SimulationLogManager 위임)
+        // 1. 기획 규칙 반영: 새로운 시뮬레이션 세트 실행 시 고유 식별자(Sim_ID)를 1번부터 카운팅하도록 완벽 리셋
+        currentSimId = 0;
+        isFirstJsonRecord = true;
+
+        // 2. 파일 격리 법칙: 씬 정지 없이 연속 실행 시 중복 파일 쓰기 충돌을 원천 회피하기 위해 개별 시분초 식별자 주입
+        string uniqueSessionTimeStamp = DateTime.Now.ToString("HHmmss");
+        activeCsvPath = $"Balance/Balance_CombatMetrics_{uniqueSessionTimeStamp}.csv";
+        activeJsonPath = $"Balance/Balance_CombatFlow_{uniqueSessionTimeStamp}.json";
+
         string csvHeader = "Sim_ID,Result,Total_Rounds,P_Alive_Count,E_Alive_Count,P_Remain_HP_Ratio,E_Remain_HP_Ratio," +
                            "P_Corrosion_Deaths,E_Corrosion_Deaths,P_Tendency_Distribution,E_Tendency_Distribution," +
                            "P_Dmg_Split,E_Dmg_Split,P_Heal_Done,E_Heal_Done,P_Status_Impact,E_Status_Impact," +
@@ -62,27 +67,30 @@ public class BalanceDataExporter : MonoBehaviour
 
         if (SimulationLogManager.Instance != null)
         {
-            SimulationLogManager.Instance.InitializeStream(CSV_FILE_NAME, csvHeader);
-
-            // 2. JSON 배열 열기 (초기 괄호 기입)
-            SimulationLogManager.Instance.InitializeStream(JSON_FILE_NAME, "[");
+            SimulationLogManager.Instance.InitializeStream(activeCsvPath, csvHeader);
+            SimulationLogManager.Instance.InitializeStream(activeJsonPath, "[");
         }
         else
         {
             Debug.LogError("[BalanceDataExporter] SimulationLogManager 인스턴스를 찾을 수 없습니다!");
         }
+    }
 
-        isFirstJsonRecord = true;
+    private void HandleSimulationSessionEnded()
+    {
+        if (SimulationLogManager.Instance != null)
+        {
+            if (!string.IsNullOrEmpty(activeJsonPath))
+                SimulationLogManager.Instance.CloseStream(activeJsonPath, "\n]");
+            if (!string.IsNullOrEmpty(activeCsvPath))
+                SimulationLogManager.Instance.CloseStream(activeCsvPath);
+        }
     }
 
     private void OnDestroy()
     {
-        // 게임/시뮬레이션 종료 시 JSON 배열 닫기 및 스트림 해제 요청
-        if (SimulationLogManager.Instance != null)
-        {
-            SimulationLogManager.Instance.CloseStream(JSON_FILE_NAME, "\n]");
-            SimulationLogManager.Instance.CloseStream(CSV_FILE_NAME);
-        }
+        // 오브젝트 최종 소멸 시 안전장치 해제 구동 (세션 이벤트가 먼저 닫아주므로 방어 구문 역할)
+        HandleSimulationSessionEnded();
     }
 
     // ========================================================================
@@ -90,6 +98,10 @@ public class BalanceDataExporter : MonoBehaviour
     // ========================================================================
     private void OnEnable()
     {
+        // [업데이트] 거시적 시뮬레이션 라이프사이클 이벤트 연동 구독
+        BattleLogEvents.OnSimulationSessionStarted += HandleSimulationSessionStarted;
+        BattleLogEvents.OnSimulationSessionEnded += HandleSimulationSessionEnded;
+
         BattleLogEvents.OnBattleStarted += HandleBattleStarted;
         BattleLogEvents.OnBattleEnded += HandleBattleEnded;
         BattleLogEvents.OnRoundStarted += HandleRoundStarted;
@@ -111,6 +123,9 @@ public class BalanceDataExporter : MonoBehaviour
     private void OnDisable()
     {
         // 메모리 누수 방지용 구독 해제
+        BattleLogEvents.OnSimulationSessionStarted -= HandleSimulationSessionStarted;
+        BattleLogEvents.OnSimulationSessionEnded -= HandleSimulationSessionEnded;
+
         BattleLogEvents.OnBattleStarted -= HandleBattleStarted;
         BattleLogEvents.OnBattleEnded -= HandleBattleEnded;
         BattleLogEvents.OnRoundStarted -= HandleRoundStarted;
@@ -376,10 +391,10 @@ public class BalanceDataExporter : MonoBehaviour
                      $"{p_dmgSplit},{e_dmgSplit},{p_healDone},{e_healDone},{p_impact},{e_impact}," +
                      $"{p_skills},{e_skills}";
 
-        // I/O 매니저에게 쓰기 위임
-        if (SimulationLogManager.Instance != null)
+        // I/O 매니저에게 쓰기 위임 (동적 고유 세션 경로로 교정)
+        if (SimulationLogManager.Instance != null && !string.IsNullOrEmpty(activeCsvPath))
         {
-            SimulationLogManager.Instance.WriteRecord(CSV_FILE_NAME, row);
+            SimulationLogManager.Instance.WriteRecord(activeCsvPath, row);
         }
     }
 
@@ -390,9 +405,9 @@ public class BalanceDataExporter : MonoBehaviour
         // I/O 매니저에게 쓰기 위임 (첫 레코드가 아니면 콤마를 앞에 붙임)
         if (!isFirstJsonRecord) jsonStr = ",\n" + jsonStr;
 
-        if (SimulationLogManager.Instance != null)
+        if (SimulationLogManager.Instance != null && !string.IsNullOrEmpty(activeJsonPath))
         {
-            SimulationLogManager.Instance.WriteRecord(JSON_FILE_NAME, jsonStr);
+            SimulationLogManager.Instance.WriteRecord(activeJsonPath, jsonStr);
         }
 
         isFirstJsonRecord = false;
@@ -414,7 +429,7 @@ public class InitialUnitSetup
 {
     public string UnitName;
     public bool IsPlayer;
-    public int PositionIndex; // 0번이 최전방, 3번이 최후방
+    public int PositionIndex;
     public List<string> EquippedSkills = new List<string>();
 }
 

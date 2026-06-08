@@ -11,8 +11,8 @@ using UnityEngine;
 public class MLDataExporter : MonoBehaviour
 {
     [Header("머신러닝 파일 제어")]
-    // [업데이트] Manager가 MLCluster 전용 폴더를 생성하도록 파일명 앞에 카테고리 경로("MLCluster/")를 추가했습니다.
-    private const string CSV_FILE_NAME = "MLCluster/ML_Feature_Dataset.csv";
+    // [오류 사후 보수] 개별 실행 세트 독립 분리 법칙 준수를 위해, const 대신 런타임 동적 변수 구조로 개편합니다.
+    private string activeCsvPath;
     private int currentSimId = 0;
 
     // ==========================================
@@ -32,28 +32,17 @@ public class MLDataExporter : MonoBehaviour
     // ========================================================================
     // [1. 초기화 및 스트림 오픈 요청]
     // ========================================================================
-    private void Awake()
-    {
-        // 10개의 정규화된 피처 칼럼 헤더 (Sim_ID 포함)
-        string csvHeader = "Sim_ID,Alive_Ratio,Remaining_HP_Ratio,YinYang_Deviation," +
-                           "Skill_Aggressive,Skill_Heal,Skill_Utility,Skill_Defensive," +
-                           "Turn_Skip_Ratio,Corrosion_Revert_Count";
-
-        if (SimulationLogManager.Instance != null)
-        {
-            SimulationLogManager.Instance.InitializeStream(CSV_FILE_NAME, csvHeader);
-        }
-        else
-        {
-            Debug.LogError("[MLDataExporter] SimulationLogManager 인스턴스를 찾을 수 없습니다.");
-        }
-    }
+    // [업데이트] 유니티 내 단 1회성 제약인 Start()를 전면 폐기하고, 거시 세션 수명주기 메서드로 로직을 완전히 이동시켰습니다.
 
     // ========================================================================
     // [2. 이벤트 구독 (옵저버 패턴)]
     // ========================================================================
     private void OnEnable()
     {
+        // [업데이트] 연속 실행 시 생명주기 통제를 위한 거시 세션 이벤트 구독 추가
+        BattleLogEvents.OnSimulationSessionStarted += HandleSimulationSessionStarted;
+        BattleLogEvents.OnSimulationSessionEnded += HandleSimulationSessionEnded;
+
         BattleLogEvents.OnBattleStarted += HandleBattleStarted;
         BattleLogEvents.OnBattleEnded += HandleBattleEnded;
         BattleLogEvents.OnRoundEnded += HandleRoundEnded;
@@ -65,6 +54,9 @@ public class MLDataExporter : MonoBehaviour
 
     private void OnDisable()
     {
+        BattleLogEvents.OnSimulationSessionStarted -= HandleSimulationSessionStarted;
+        BattleLogEvents.OnSimulationSessionEnded -= HandleSimulationSessionEnded;
+
         BattleLogEvents.OnBattleStarted -= HandleBattleStarted;
         BattleLogEvents.OnBattleEnded -= HandleBattleEnded;
         BattleLogEvents.OnRoundEnded -= HandleRoundEnded;
@@ -72,6 +64,40 @@ public class MLDataExporter : MonoBehaviour
         BattleLogEvents.OnTurnSkipped -= HandleTurnSkipped;
         BattleLogEvents.OnSkillCasted -= HandleSkillCasted;
         BattleLogEvents.OnCorrosionReverted -= HandleCorrosionReverted;
+    }
+
+    // ========================================================================
+    // [신규 업데이트: 세션 제어 및 실행 세트 파일 분리 시스템]
+    // ========================================================================
+    private void HandleSimulationSessionStarted()
+    {
+        // 1. 기획 규칙 반영: 새로운 시뮬레이션 세트 실행 시 고유 식별자(Sim_ID)를 다시 1번부터 카운팅하도록 초기화
+        currentSimId = 0;
+
+        // 2. 파일 분리 격리 법칙: 씬을 끄지 않고 연속 가동하더라도 중복 파일 충돌(Sharing violation)을 차단하도록 고유 시분초 식별값 결합
+        string uniqueSessionTimeStamp = DateTime.Now.ToString("HHmmss");
+        activeCsvPath = $"MLCluster/ML_Feature_Dataset_{uniqueSessionTimeStamp}.csv";
+
+        string csvHeader = "Sim_ID,Alive_Ratio,Remaining_HP_Ratio,YinYang_Deviation," +
+                           "Skill_Aggressive,Skill_Heal,Skill_Utility,Skill_Defensive," +
+                           "Turn_Skip_Ratio,Corrosion_Revert_Count";
+
+        if (SimulationLogManager.Instance != null)
+        {
+            SimulationLogManager.Instance.InitializeStream(activeCsvPath, csvHeader);
+        }
+        else
+        {
+            Debug.LogError("[MLDataExporter] SimulationLogManager 인스턴스를 찾을 수 없습니다.");
+        }
+    }
+
+    private void HandleSimulationSessionEnded()
+    {
+        if (SimulationLogManager.Instance != null && !string.IsNullOrEmpty(activeCsvPath))
+        {
+            SimulationLogManager.Instance.CloseStream(activeCsvPath);
+        }
     }
 
     // ========================================================================
@@ -164,10 +190,10 @@ public class MLDataExporter : MonoBehaviour
                      $"{aggRatio:F3},{healRatio:F3},{utilRatio:F3},{defRatio:F3}," +
                      $"{skipRatio:F3},{playerCorrosionReverts}";
 
-        // I/O 매니저에게 쓰기 위임 (Chunk-based Stateless I/O 연동)
-        if (SimulationLogManager.Instance != null)
+        // I/O 매니저에게 쓰기 위임 (동적 고유 파일 경로 격리 적용)
+        if (SimulationLogManager.Instance != null && !string.IsNullOrEmpty(activeCsvPath))
         {
-            SimulationLogManager.Instance.WriteRecord(CSV_FILE_NAME, row);
+            SimulationLogManager.Instance.WriteRecord(activeCsvPath, row);
         }
     }
 
